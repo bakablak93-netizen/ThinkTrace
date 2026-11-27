@@ -1,0 +1,8 @@
+fastapi>=0.115,<1
+uvicorn>=0.30
+sympy>=1.13,<2
+pydantic>=2.7,<3
+python-dotenv>=1.0
+# tests
+pytest>=8
+httpx>=0.27,<1
