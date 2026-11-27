@@ -1,0 +1,352 @@
+<title>Filum Прототип</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+:root{
+  /* Layout: one centered working column over a full-screen WebGL field. */
+  --bg:#0C1230; --surface:#16204A; --hint:#1F2C63; --field:#0C1230;
+  --fg:#F3F5FF; --muted:#A9B4E0; --soft:#C5CDEE; --line:#3A4A8C;
+  --action:#FFB224; --ai:#5CC8FF; --ai-soft:#9BDCFF; --ok:#3BE0A0; --err:#FF5C7A;
+  --sans:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0}
+#bg{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;display:block}
+.page{position:relative;z-index:1;max-width:760px;margin:0 auto;padding-block:20px 56px;display:flex;flex-direction:column;gap:20px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px}
+.brand{display:flex;align-items:center;gap:10px;font-size:22px;font-weight:800;letter-spacing:-.02em}
+.tag{margin-left:6px;padding:4px 12px;border-radius:999px;background:rgba(31,44,99,.8);font-size:13px;font-weight:600;color:var(--soft)}
+.mono{font-family:var(--mono)}
+.label{font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--muted);text-transform:uppercase}
+.task{font-family:var(--mono);font-size:clamp(34px,8vw,54px);line-height:1.1;font-weight:700;margin:4px 0 0}
+.panel{background:rgba(22,32,74,.86);border-radius:20px;padding:22px 24px;backdrop-filter:blur(6px)}
+.hint{display:flex;gap:14px;background:rgba(31,44,99,.92);border-radius:18px;padding:20px 22px}
+.hint[hidden]{display:none}
+.hint .k{font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--ai-soft)}
+.hint p{margin:6px 0 14px;font-size:clamp(18px,3.4vw,23px);line-height:1.4;font-weight:600}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+button{font-family:var(--sans);cursor:pointer}
+.btn{height:56px;padding:0 30px;border:0;border-radius:12px;background:var(--action);color:#0C1230;font-weight:700;font-size:17px;transition:transform .15s,filter .15s}
+.btn:hover{filter:brightness(1.08)}.btn:active{transform:translateY(1px)}
+.chip{height:44px;padding:0 18px;border:0;border-radius:999px;background:var(--hint);color:var(--fg);font-weight:600;font-size:15px}
+.hint .chip{background:#16204A}
+.chip[aria-pressed="true"]{background:var(--action);color:#0C1230}
+.link{height:44px;padding:0 6px;border:0;background:transparent;color:var(--soft);font-size:15px;font-weight:500;text-decoration:underline}
+.icon{width:44px;height:44px;border:0;border-radius:12px;background:rgba(31,44,99,.8);color:var(--fg);font-weight:700;font-size:16px}
+button:focus-visible,input:focus-visible{outline:3px solid #BFE9FF;outline-offset:3px}
+h2{margin:0 0 18px}
+.thread{position:relative;margin-left:8px;padding-left:32px;border-left:2px solid var(--line);display:flex;flex-direction:column;gap:24px}
+.step{position:relative}
+.node{position:absolute;left:-43px;top:10px;width:18px;height:18px;border-radius:50%;border:3px solid var(--surface);box-sizing:content-box;transition:background .3s}
+.node.err{background:var(--err);border-radius:4px;transform:rotate(45deg) scale(.82)}
+.node.ok{background:var(--ok)}
+.node.solved{background:var(--action);box-shadow:0 0 0 2px var(--action)}
+.node.next{background:transparent;border:3px dashed var(--ai);top:6px;width:14px;height:14px}
+.expr{font-family:var(--mono);font-size:clamp(22px,5vw,30px);font-weight:700}
+.badge{display:inline-block;margin-left:12px;padding:3px 12px;border-radius:999px;font-size:14px;font-weight:700;vertical-align:middle}
+.badge.err{background:rgba(255,92,122,.18);color:#FF93A8}
+.badge.ok{background:rgba(59,224,160,.16);color:var(--ok)}
+.badge.solved{background:rgba(255,178,36,.18);color:var(--action)}
+.ask{font-size:20px;font-weight:700}
+.sub{margin:4px 0 12px;font-size:15px;color:var(--muted)}
+input[type=text]{flex:1 1 260px;min-width:0;height:56px;padding:0 18px;border:0;border-radius:12px;background:var(--field);color:var(--fg);font-family:var(--mono);font-size:24px;font-weight:700}
+input[type=text]::placeholder{color:#6F7DB5}
+.msg{min-height:22px;margin:10px 0 0;font-size:15px;color:var(--soft)}
+.foot{text-align:center;font-size:14px;color:var(--muted)}
+.done{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;background:rgba(31,44,99,.92);border-radius:18px;padding:20px 22px}
+.done[hidden]{display:none}
+.done b{font-family:var(--mono);font-size:26px}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes pop{0%{transform:scale(0)}55%{transform:scale(1.5)}100%{transform:scale(1)}}
+@keyframes popErr{0%{transform:rotate(45deg) scale(0)}55%{transform:rotate(45deg) scale(1.3)}100%{transform:rotate(45deg) scale(.82)}}
+@keyframes shake{0%,100%{transform:none}15%{transform:translateX(-9px)}35%{transform:translateX(8px)}55%{transform:translateX(-6px)}75%{transform:translateX(4px)}}
+@keyframes ring{0%{box-shadow:0 0 0 0 rgba(59,224,160,.55)}100%{box-shadow:0 0 0 16px rgba(59,224,160,0)}}
+.step.fresh{animation:rise .38s cubic-bezier(.2,.8,.2,1) both}
+.step.fresh .node.ok,.step.fresh .node.solved{animation:pop .5s cubic-bezier(.2,.8,.2,1) both,ring .7s .1s}
+.step.fresh .node.err{animation:popErr .45s cubic-bezier(.2,.8,.2,1) both}
+.step.fresh .badge{animation:rise .4s .12s both}
+.hint.in{animation:rise .4s cubic-bezier(.2,.8,.2,1) both}
+.shake{animation:shake .45s}
+.done:not([hidden]){animation:rise .5s cubic-bezier(.2,.8,.2,1) both}
+.btn:active,.chip:active{transform:scale(.96)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<canvas id="bg" aria-hidden="true"></canvas>
+
+<div class="page">
+<header>
+  <div class="brand">
+    <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><path d="M3 22 C9 22 11 10 16 10 S23 22 29 22" fill="none" stroke="#FFB224" stroke-width="3.2" stroke-linecap="round"/><circle cx="16" cy="10" r="3" fill="#FF5C7A"/></svg>
+    Filum<span class="tag">Задача 1 из 2</span>
+  </div>
+  <div class="row" style="gap:8px"><button class="icon" type="button" aria-label="Как это работает">?</button><button class="icon" type="button" aria-label="Язык: русский" style="width:auto;padding:0 14px">RU</button></div>
+</header>
+
+<section>
+  <div class="label">Реши уравнение</div>
+  <div class="task">2(x + 3) = 14</div>
+</section>
+
+<section class="hint" id="hint" hidden aria-live="polite">
+  <svg width="34" height="34" viewBox="0 0 32 32" aria-hidden="true" style="flex:none"><path d="M3 22 C9 22 11 10 16 10 S23 22 29 22" fill="none" stroke="#5CC8FF" stroke-width="3.2" stroke-linecap="round"/><circle cx="16" cy="10" r="3" fill="#FF5C7A"/></svg>
+  <div style="min-width:0">
+    <div class="k" id="hintK">ПОДСКАЗКА ИИ · 1 ИЗ 3</div>
+    <p id="hintText"></p>
+    <div class="row"><button class="chip" type="button" id="more">Ещё подсказку</button><button class="link" type="button">Не согласен с оценкой</button></div>
+  </div>
+</section>
+
+<section class="panel">
+  <h2 class="label">Твои шаги</h2>
+  <div class="thread" id="thread"></div>
+</section>
+
+<section class="done" id="done" hidden>
+  <div><div class="label" style="color:var(--action)">Решено</div><b>x = 4</b></div>
+  <button class="btn" type="button" id="again">Решить заново</button>
+</section>
+
+<p class="foot">Математику проверяет программа. ИИ только формулирует подсказки. Это прототип: проверка шагов здесь упрощена.</p>
+</div>
+
+<script>
+(function () {
+  /* ---------- game logic (mock) ---------- */
+  var VALID = {'2x+6=14':1, 'x+3=7':1, '2x=8':1, 'x=4':1, '4=x':1};
+  var DIST = '2x+3=14';
+  var HINTS = [
+    'Ты умножил 2 на x. А что происходит с числом 3 внутри скобок?',
+    'Множитель перед скобками относится ко всей сумме, не только к первому слагаемому.',
+    'Раскрой скобки так, чтобы 2 умножалось и на x, и на 3. Что получится слева?'
+  ];
+  var steps = [], flagged = false, hintLevel = 0, solved = false, fresh = -1;
+  var el = {
+    thread: document.getElementById('thread'), hint: document.getElementById('hint'),
+    hintText: document.getElementById('hintText'), hintK: document.getElementById('hintK'),
+    more: document.getElementById('more'), done: document.getElementById('done'), again: document.getElementById('again')
+  };
+  var input, msg, conf = '';
+
+  function norm(s){ return s.toLowerCase().replace(/\s+/g,'').replace(/[−–—]/g,'-').replace(/[×·*]/g,'').replace(/,/g,'.'); }
+
+  function render() {
+    var h = '';
+    steps.forEach(function (s, i) {
+      var label = s.st === 'err' ? 'Ошибка в этом шаге' : s.st === 'solved' ? 'Решено' : 'Верно';
+      h += '<div class="step' + (i === fresh ? ' fresh' : '') + '"><div class="node ' + s.st + '"></div><span class="expr">' + s.e + '</span><span class="badge ' + s.st + '">' + label + '</span></div>';
+    });
+    if (!solved) {
+      var ask = flagged ? 'Исправь шаг ' + steps.length : 'Шаг ' + (steps.length + 1) + ': твой ход';
+      h += '<div class="step"><div class="node next"></div><div class="ask">' + ask + '</div>' +
+        '<label for="next" class="sub" style="display:block">' + (flagged ? 'Напиши, как этот шаг должен выглядеть' : 'Напиши следующий шаг решения') + '</label>' +
+        '<div class="row"><input id="next" type="text" autocomplete="off" inputmode="text" placeholder="Например: 2x + 6 = 14"><button class="btn" type="button" id="check">Проверить</button></div>' +
+        '<div class="row" role="group" aria-labelledby="cl" style="margin-top:16px"><span id="cl" style="font-size:15px;color:var(--soft)">Насколько ты уверен?</span>' +
+        ['Не очень','Думаю, да','Уверен'].map(function(t){return '<button class="chip conf" type="button" aria-pressed="' + (conf===t) + '">' + t + '</button>';}).join('') + '</div>' +
+        '<p class="msg" id="msg" role="status"></p></div>';
+    }
+    el.thread.innerHTML = h;
+    input = document.getElementById('next'); msg = document.getElementById('msg');
+    if (input) {
+      input.addEventListener('input', function(){ FX.energy(0.35); var r = input.getBoundingClientRect(); FX.pulse(r.left + 30 + Math.random() * Math.max(10, r.width - 60), r.top + r.height / 2, 'key'); });
+      input.addEventListener('keydown', function(e){ if (e.key === 'Enter') check(); });
+      document.getElementById('check').addEventListener('click', check);
+      Array.prototype.forEach.call(document.querySelectorAll('.conf'), function(b){
+        b.addEventListener('click', function(){ conf = b.textContent; fresh = -1; render(); document.querySelector('.conf[aria-pressed="true"]').focus(); });
+      });
+    }
+    el.hint.hidden = !flagged;
+  }
+
+  function showHint(){
+    el.hintText.textContent = HINTS[hintLevel];
+    el.hintK.textContent = 'ПОДСКАЗКА ИИ · ' + (hintLevel + 1) + ' ИЗ 3';
+    el.more.disabled = hintLevel >= 2; el.more.style.opacity = hintLevel >= 2 ? .5 : 1;
+    el.hint.classList.remove('in'); void el.hint.offsetWidth; el.hint.classList.add('in');
+  }
+
+  function pulseFrom(node, kind){
+    var r = (node || input).getBoundingClientRect();
+    FX.pulse(r.left + r.width / 2, r.top + r.height / 2, kind);
+  }
+
+  function check(){
+    if (!input) return;
+    var raw = input.value, v = norm(raw);
+    if (!v) { msg.textContent = 'Введи шаг решения.'; return; }
+    var btn = document.getElementById('check');
+    if (v === DIST) {
+      if (flagged) { msg.textContent = 'Этот шаг всё ещё содержит ту же ошибку.'; FX.pulse(rect(btn).x, rect(btn).y, 'err'); shake(); return; }
+      steps.push({e: '2x + 3 = 14', st: 'err'}); flagged = true; hintLevel = 0; fresh = steps.length - 1;
+      render(); showHint(); shake();
+      var n = el.thread.querySelectorAll('.node.err')[0]; pulseFrom(n, 'err');
+      return;
+    }
+    if (VALID[v]) {
+      var disp = raw.trim().replace(/\*/g,'×').replace(/-/g,'−') || v;
+      var fin = (v === 'x=4' || v === '4=x');
+      if (flagged) { steps.pop(); flagged = false; }
+      steps.push({e: disp, st: fin ? 'solved' : 'ok'}); fresh = steps.length - 1;
+      if (fin) solved = true;
+      render();
+      var nodes = el.thread.querySelectorAll('.node'); var last = nodes[nodes.length - (solved ? 1 : 2)] || nodes[0];
+      pulseFrom(last, fin ? 'solved' : 'ok');
+      if (fin) { el.done.hidden = false; el.hint.hidden = true; }
+      else if (document.getElementById('next')) document.getElementById('next').focus();
+      return;
+    }
+    msg.textContent = 'Не вижу, как этот шаг следует из предыдущего. Проверь переход ещё раз.';
+    var b2 = rect(btn); FX.pulse(b2.x, b2.y, 'err'); shake();
+  }
+  function rect(n){ var r = n.getBoundingClientRect(); return {x: r.left + r.width/2, y: r.top + r.height/2}; }
+  function shake(){ var i = document.getElementById('next'); if (!i) return; var p = i.parentNode; p.classList.remove('shake'); void p.offsetWidth; p.classList.add('shake'); }
+
+  el.more.addEventListener('click', function(){ if (hintLevel < 2) { hintLevel++; showHint(); var r = el.hint.getBoundingClientRect(); FX.pulse(r.left + 40, r.top + 40, 'ai'); } });
+  el.again.addEventListener('click', function(){ fresh = -1; steps = []; flagged = false; solved = false; hintLevel = 0; conf=''; el.done.hidden = true; render(); });
+
+  /* ---------- WebGL background (field shader + particles) ---------- */
+  var FX = { pulse: function(){}, energy: function(){} };
+  var cv = document.getElementById('bg');
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var gl = null;
+  try { gl = cv.getContext('webgl', {antialias: false, alpha: false}); } catch (e) {}
+  if (gl) {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2), W = 1, H = 1;
+    function sh(type, src){ var s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s; }
+    function prog(vs, fs){ var p = gl.createProgram(); gl.attachShader(p, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(p); return p; }
+
+    var pBg = prog(
+      'attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}',
+      'precision mediump float;uniform vec2 r;uniform float t;uniform vec2 m;uniform vec3 tint;uniform float k;' +
+      'void main(){vec2 uv=gl_FragCoord.xy/r;float asp=r.x/r.y;' +
+      'vec3 c=mix(vec3(.040,.070,.190),vec3(.060,.100,.270),uv.y);' +
+      'float w=sin(uv.x*3.+t*.10)+sin(uv.y*4.-t*.08)+sin((uv.x+uv.y)*5.+t*.06);' +
+      'c+=vec3(.05,.09,.22)*(.5+.5*w/3.)*.7;' +
+      'float d=distance(uv*vec2(asp,1.),m*vec2(asp,1.));' +
+      'c+=vec3(.20,.42,1.)*exp(-d*3.4)*.11;' +
+      'c+=tint*k*exp(-distance(uv*vec2(asp,1.),vec2(.5*asp,.45))*1.6)*.35;' +
+      'gl_FragColor=vec4(c,1.);}'
+    );
+    var pPt = prog(
+      'attribute vec2 p;attribute float s;attribute vec4 c;uniform vec2 r;uniform float dpr;varying vec4 vc;' +
+      'void main(){vc=c;gl_Position=vec4(p/r*2.-1.,0.,1.);gl_PointSize=s*dpr;}',
+      'precision mediump float;varying vec4 vc;' +
+      'void main(){float d=length(gl_PointCoord-.5)*2.;float a=1.-smoothstep(.0,1.,d);a*=a;gl_FragColor=vec4(vc.rgb,vc.a*a);}'
+    );
+    var quad = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
+    var ptBuf = gl.createBuffer();
+
+    var N = 0, px, py, vx, vy, ph, sz, fl, fr, fg, fb, data;
+    var BASE = [0.62, 0.74, 1.0], COL = {ok: [0.23,0.88,0.63], err: [1.0,0.36,0.48], ai: [0.36,0.78,1.0], solved: [1.0,0.70,0.14], tap: [0.70,0.82,1.0], key: [0.75,0.85,1.0]};
+    function init(){
+      W = Math.max(1, window.innerWidth); H = Math.max(1, window.innerHeight);
+      cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+      var n = Math.max(110, Math.min(320, Math.round(W * H / 5200)));
+      if (n !== N) {
+        N = n; px = new Float32Array(N); py = new Float32Array(N); vx = new Float32Array(N); vy = new Float32Array(N);
+        ph = new Float32Array(N); sz = new Float32Array(N); fl = new Float32Array(N); fr = new Float32Array(N); fg = new Float32Array(N); fb = new Float32Array(N);
+        data = new Float32Array(N * 7);
+        for (var i = 0; i < N; i++) { px[i] = Math.random() * W; py[i] = Math.random() * H; ph[i] = Math.random() * 6.28; sz[i] = 2.6 + Math.random() * 3.6; }
+      }
+    }
+    init();
+    var mx = W / 2, my = H / 2, sx = mx, sy = my, active = false, en = 0, pulses = [], tint = [0,0,0], tintK = 0, jit = 0, att = {x: 0, y: 0, k: 0};
+    window.addEventListener('pointermove', function(e){ mx = e.clientX; my = e.clientY; active = true; }, {passive: true});
+    window.addEventListener('pointerleave', function(){ active = false; });
+    window.addEventListener('resize', init);
+
+    FX.energy = function(a){ en = Math.min(1.2, en + a); };
+    FX.pulse = function(x, y, kind){
+      var c = COL[kind] || COL.ok, big = kind === 'solved', small = kind === 'tap' || kind === 'key';
+      var s = kind === 'err' ? 0.7 : big ? 1.2 : kind === 'tap' ? 0.45 : kind === 'key' ? 0.25 : 0.9;
+      var life = big ? 2.4 : small ? 1.0 : 1.6;
+      var delay = (kind === 'ok' || big) ? -0.3 : 0;
+      pulses.push({x: x, y: y, t: delay, c: c, s: s, life: life});
+      if (big) pulses.push({x: x, y: y, t: -0.55, c: COL.ok, s: 0.8, life: 2.4});
+      if (kind === 'err') { jit = 1; pulses.push({x: x, y: y, t: 0.12, c: c, s: 0.45, life: 1.3}); }
+      if (kind === 'ok' || big) { att.x = x; att.y = y; att.k = big ? 1.2 : 0.8; }
+      if (!small) { tint = c; tintK = big ? 1 : 0.7; }
+    };
+
+    var last = performance.now(), T = 0, visible = true, raf = 0;
+    document.addEventListener('visibilitychange', function(){ visible = !document.hidden; if (visible) { last = performance.now(); loop(last); } });
+
+    function step(dt){
+      T += dt; en *= Math.max(0, 1 - 1.4 * dt); tintK *= Math.max(0, 1 - 1.1 * dt); jit *= Math.max(0, 1 - 2.2 * dt); att.k *= Math.max(0, 1 - 2.6 * dt);
+      sx += (mx - sx) * Math.min(1, dt * 6); sy += (my - sy) * Math.min(1, dt * 6);
+      for (var q = pulses.length - 1; q >= 0; q--) { pulses[q].t += dt; if (pulses[q].t > pulses[q].life) pulses.splice(q, 1); }
+      var R = 150, damp = Math.max(0, 1 - 1.6 * dt);
+      for (var i = 0; i < N; i++) {
+        var x = px[i], y = py[i], a = ph[i], amp = 7 + en * 40;
+        vx[i] += (Math.sin(T * .31 + a) * amp) * dt; vy[i] += (Math.cos(T * .27 + a * 1.3) * amp - 1.5) * dt;
+        if (jit > 0.02) { vx[i] += (Math.random() - .5) * jit * 1400 * dt; vy[i] += (Math.random() - .5) * jit * 1400 * dt; }
+        if (att.k > 0.03) { var ax = att.x - x, ay = att.y - y, ad = Math.sqrt(ax * ax + ay * ay) + 1; if (ad < 380) { var af = att.k * (1 - ad / 380) * 900; vx[i] += ax / ad * af * dt; vy[i] += ay / ad * af * dt; fl[i] = Math.max(fl[i], att.k * .25); fr[i] = COL.ok[0]; fg[i] = COL.ok[1]; fb[i] = COL.ok[2]; } }
+        if (active) {
+          var dx = x - mx, dy = y - my, d2 = dx * dx + dy * dy;
+          if (d2 < R * R && d2 > 1) { var d = Math.sqrt(d2), f = (1 - d / R); f *= f * 900; vx[i] += (dx / d * f + (-dy / d) * f * .45) * dt; vy[i] += (dy / d * f + (dx / d) * f * .45) * dt; fl[i] = Math.max(fl[i], .18 * (1 - d / R)); fr[i] = .55; fg[i] = .72; fb[i] = 1; }
+        }
+        for (var q2 = 0; q2 < pulses.length; q2++) {
+          var P = pulses[q2]; if (P.t < 0) continue;
+          var ddx = x - P.x, ddy = y - P.y, dd = Math.sqrt(ddx * ddx + ddy * ddy) + .001, rr = P.t * 560, k = 1 - Math.abs(dd - rr) / 90;
+          if (k > 0) { var fade = 1 - P.t / P.life, g = k * P.s * fade; vx[i] += ddx / dd * g * 520 * dt; vy[i] += ddy / dd * g * 520 * dt; if (g > fl[i]) { fl[i] = Math.min(1, g * 1.3); fr[i] = P.c[0]; fg[i] = P.c[1]; fb[i] = P.c[2]; } }
+        }
+        vx[i] *= damp; vy[i] *= damp; px[i] += vx[i] * dt; py[i] += vy[i] * dt;
+        if (px[i] < -10) px[i] = W + 10; else if (px[i] > W + 10) px[i] = -10;
+        if (py[i] < -10) py[i] = H + 10; else if (py[i] > H + 10) py[i] = -10;
+        fl[i] *= Math.max(0, 1 - 1.5 * dt);
+      }
+    }
+    function draw(){
+      gl.viewport(0, 0, cv.width, cv.height);
+      gl.disable(gl.BLEND); gl.useProgram(pBg);
+      gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+      var la = gl.getAttribLocation(pBg, 'a'); gl.enableVertexAttribArray(la); gl.vertexAttribPointer(la, 2, gl.FLOAT, false, 0, 0);
+      gl.uniform2f(gl.getUniformLocation(pBg, 'r'), cv.width, cv.height);
+      gl.uniform1f(gl.getUniformLocation(pBg, 't'), T);
+      gl.uniform2f(gl.getUniformLocation(pBg, 'm'), sx / W, 1 - sy / H);
+      gl.uniform3f(gl.getUniformLocation(pBg, 'tint'), tint[0], tint[1], tint[2]);
+      gl.uniform1f(gl.getUniformLocation(pBg, 'k'), tintK);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+      for (var i = 0; i < N; i++) {
+        var o = i * 7, f = fl[i], inv = 1 - Math.min(1, f * 1.4);
+        data[o] = px[i] * dpr; data[o + 1] = (H - py[i]) * dpr; data[o + 2] = sz[i] * (1 + f * .9);
+        data[o + 3] = BASE[0] * inv + fr[i] * (1 - inv); data[o + 4] = BASE[1] * inv + fg[i] * (1 - inv); data[o + 5] = BASE[2] * inv + fb[i] * (1 - inv);
+        data[o + 6] = .40 + .12 * Math.sin(T * .8 + ph[i]) + Math.min(.6, f * .8);
+      }
+      gl.useProgram(pPt); gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+      gl.bindBuffer(gl.ARRAY_BUFFER, ptBuf); gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW);
+      var lp = gl.getAttribLocation(pPt, 'p'), ls = gl.getAttribLocation(pPt, 's'), lc = gl.getAttribLocation(pPt, 'c');
+      gl.enableVertexAttribArray(lp); gl.vertexAttribPointer(lp, 2, gl.FLOAT, false, 28, 0);
+      gl.enableVertexAttribArray(ls); gl.vertexAttribPointer(ls, 1, gl.FLOAT, false, 28, 8);
+      gl.enableVertexAttribArray(lc); gl.vertexAttribPointer(lc, 4, gl.FLOAT, false, 28, 12);
+      gl.uniform2f(gl.getUniformLocation(pPt, 'r'), cv.width, cv.height);
+      gl.uniform1f(gl.getUniformLocation(pPt, 'dpr'), dpr);
+      gl.drawArrays(gl.POINTS, 0, N);
+    }
+    function loop(now){
+      if (!visible) return;
+      var dt = Math.min(0.05, (now - last) / 1000); last = now;
+      if (!reduce) step(dt); draw();
+      if (!reduce) raf = requestAnimationFrame(loop);
+    }
+    if (reduce) { for (var k0 = 0; k0 < 20; k0++) step(0.05); draw(); window.addEventListener('resize', function(){ draw(); }); }
+    else raf = requestAnimationFrame(loop);
+    window.__fx = {n: function(){ return N; }};
+  } else {
+    cv.style.display = 'none';
+    document.body.style.background = 'linear-gradient(180deg,#0A1030,#101B45)';
+  }
+
+  document.addEventListener('click', function(e){
+    var b = e.target.closest && e.target.closest('button');
+    if (b && b.id !== 'check' && !b.classList.contains('conf')) { var r = b.getBoundingClientRect(); FX.pulse(r.left + r.width / 2, r.top + r.height / 2, 'tap'); }
+    else if (b) { var r2 = b.getBoundingClientRect(); FX.pulse(r2.left + r2.width / 2, r2.top + r2.height / 2, 'tap'); }
+  });
+  render();
+})();
+</script>
