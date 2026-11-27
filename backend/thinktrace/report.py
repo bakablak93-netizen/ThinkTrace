@@ -51,8 +51,10 @@ def build_report(conn: sqlite3.Connection, sid: str, lang: str = "ru") -> dict:
             })
             item.update(text=pl["text"], status=pl["status"])
         elif e["type"] == "hint_shown":
-            p["hints"].append({"t": t, "level": pl["level"], "kind": pl["kind"], "auto": pl["auto"]})
-            item.update(level=pl["level"], auto=pl["auto"])
+            source = pl.get("source", "template")
+            p["hints"].append({"t": t, "level": pl["level"], "kind": pl["kind"], "auto": pl["auto"],
+                               "source": source})
+            item.update(level=pl["level"], auto=pl["auto"], source=source)
         elif e["type"] == "parse_error":
             item.update(text=pl["text"])
         timeline.append(item)

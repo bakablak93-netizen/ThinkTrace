@@ -39,6 +39,7 @@ from . import db, tutor
 from .expr import eq_latex, eq_text
 from .i18n import tr
 from .parser import ParseError, parse_equation
+from .llm import LLMClient, get_client
 from .ratelimit import RateLimiter
 from .report import build_report
 
@@ -73,7 +74,7 @@ DEFAULT_STATIC_DIR = Path(__file__).resolve().parents[2] / "frontend" / "dist"
 
 
 def create_app(db_path: str | None = None, static_dir: str | None = None,
-               limiter: RateLimiter | None = None) -> FastAPI:
+               limiter: RateLimiter | None = None, llm: LLMClient | None = None) -> FastAPI:
     load_dotenv()
     path = db_path or os.getenv("DATABASE_PATH", "thinktrace.sqlite3")
     db.init(path)
@@ -81,6 +82,7 @@ def create_app(db_path: str | None = None, static_dir: str | None = None,
         per_session=int(os.getenv("RATE_LIMIT_PER_SESSION", "300")),
         per_day=int(os.getenv("RATE_LIMIT_PER_DAY", "5000")),
     )
+    llm = llm or get_client()  # OpenAI if LLM_PROVIDER/LLM_API_KEY/LLM_MODEL are set, else templates
 
     app = FastAPI(title="ThinkTrace AI")
     app.add_middleware(
@@ -133,12 +135,12 @@ def create_app(db_path: str | None = None, static_dir: str | None = None,
     @app.post("/api/sessions/{sid}/problems/{pid}/steps")
     def submit_step(sid: str, pid: str, body: StepIn, lang: Lang = "ru", conn=Depends(get_conn)):
         limited(sid)
-        return tutor.submit_step(conn, sid, pid, body.text, body.confidence, lang)
+        return tutor.submit_step(conn, sid, pid, body.text, body.confidence, lang, llm=llm)
 
     @app.post("/api/sessions/{sid}/problems/{pid}/hint")
     def hint(sid: str, pid: str, lang: Lang = "ru", conn=Depends(get_conn)):
         limited(sid)
-        return tutor.request_hint(conn, sid, pid, lang)
+        return tutor.request_hint(conn, sid, pid, lang, llm=llm)
 
     @app.post("/api/sessions/{sid}/transfer")
     def transfer(sid: str, conn=Depends(get_conn)):

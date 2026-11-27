@@ -8,6 +8,10 @@ State is reconstructed from the event log, so the log is the single source of tr
 Modes: stage 1 implements smart_tutor (after a wrong step the system itself shows the
 level-1 question). Stage 2: independent (verdict only, hints on request) and exam.
 Transfer problems: no hints and no diagnosis shown to the student; analysis in the report.
+
+LLM (llm.py) only re-words error hints of levels 1-3: a known single bug ("hint") or an
+error outside the catalog ("unknown_error"). Ambiguous diagnoses, level 4 and "stuck" hints
+stay deterministic templates. Every hint event records its source: llm | template.
 """
 from __future__ import annotations
 
@@ -23,11 +27,12 @@ from .bugs.catalog import CATALOG
 from .diagnose import Diagnosis, diagnose
 from .events import list_events, log_event
 from .expr import Equation, eq_latex, eq_text
-from .hints import error_hint, next_level, stuck_hint
+from .hints import Hint, error_hint, next_level, stuck_hint
+from .llm import HintRequest, HintResult, LLMClient, TemplateClient
 from .i18n import LANGS, pick, tr
 from .parser import ParseError, parse_equation
 from .problems import Problem, demo_problem, main_problem, transfer_problem
-from .verifier import equivalent, is_solved
+from .verifier import equivalent, is_solved, unique_root
 
 MODES = ("smart_tutor",)
 CONFIDENCE = ("low", "medium", "high")
@@ -214,7 +219,8 @@ def _diag_payload(d: Diagnosis, lang: str) -> dict:
     }
 
 
-def submit_step(conn, sid: str, pid: str, text: str, self_confidence: str, lang: str = "ru") -> dict:
+def submit_step(conn, sid: str, pid: str, text: str, self_confidence: str, lang: str = "ru",
+                llm: LLMClient | None = None) -> dict:
     sess = get_session(conn, sid)
     if self_confidence not in CONFIDENCE:
         raise TutorError("bad_confidence")
@@ -255,9 +261,11 @@ def submit_step(conn, sid: str, pid: str, text: str, self_confidence: str, lang:
             level = min(next_level(_levels(st.episode, "error", d.bug_ids), st.wrong_attempts + 1),
                         AUTO_MAX_LEVEL)
             h = error_hint(d, level, st.current, eq_text(step), lang)
+            res = _phrase(llm, st, d, h, eq_text(step), lang)
             log_event(conn, sid, "hint_shown",
-                      {"level": h.level, "kind": "error", "bug_ids": d.bug_ids, "auto": True}, problem_id=pid)
-            resp["hint"] = {"level": h.level, "text": h.text}
+                      {"level": h.level, "kind": "error", "bug_ids": d.bug_ids, "auto": True,
+                       "source": res.source, "fallback_reason": res.fallback_reason}, problem_id=pid)
+            resp["hint"] = {"level": h.level, "text": res.text, "source": res.source}
     resp["problem"] = problem_view(conn, sid, pid)
     return resp
 
@@ -271,7 +279,33 @@ def _levels(episode: list[dict], kind: str, bug_ids: list[str] | None = None) ->
             and (bug_ids is None or e["payload"]["bug_ids"] == bug_ids)]
 
 
-def request_hint(conn, sid: str, pid: str, lang: str = "ru") -> dict:
+def _phrase(llm: LLMClient | None, st: State, d: Diagnosis | None, h: Hint, step_text: str,
+            lang: str) -> HintResult:
+    """Ask the LLM to word an error hint of level 1-3; template for everything else.
+    Only problem text, the student's lines, level, language and the error id/description
+    are passed on -- never nickname or session id."""
+    if d is None or h.level > 3 or d.is_ambiguous:
+        return HintResult(h.text, "template", "not_applicable")
+    error = None
+    if d.matches:
+        bug = CATALOG[d.matches[0].bug_id]
+        error = {"id": bug.id, "name": pick(bug.name, lang), "description": pick(bug.description, lang)}
+    req = HintRequest(
+        task="hint" if error else "unknown_error",
+        language=lang,
+        level=h.level,
+        problem=eq_text(st.original),
+        accepted_steps=[e["payload"]["text"] for e in st.accepted],
+        previous_step=eq_text(st.current),
+        student_step=step_text,
+        template_hint=h.text,
+        error=error,
+        root=unique_root(st.original),
+    )
+    return (llm or TemplateClient()).write_hint(req)
+
+
+def request_hint(conn, sid: str, pid: str, lang: str = "ru", llm: LLMClient | None = None) -> dict:
     get_session(conn, sid)
     st = load_state(conn, sid, pid)
     if st.problem["kind"] != "main":
@@ -285,16 +319,20 @@ def request_hint(conn, sid: str, pid: str, lang: str = "ru") -> dict:
         level = next_level(levels, 0)
         h = stuck_hint(st.current, level, lang)
         bug_ids: list[str] = []
+        d, step_text = None, ""
     else:
         step = parse_equation(err["payload"]["text"])
         d = diagnose(st.current, step)  # deterministic: same result as when the step was checked
         bug_ids = d.bug_ids
         levels = _levels(st.episode, "error", bug_ids)
         level = next_level(levels, st.wrong_attempts)
-        h = error_hint(d, level, st.current, eq_text(step), lang)
-    log_event(conn, sid, "hint_shown", {"level": h.level, "kind": h.kind, "bug_ids": bug_ids, "auto": False},
-              problem_id=pid)
-    return {"level": h.level, "text": h.text, "kind": h.kind}
+        step_text = eq_text(step)
+        h = error_hint(d, level, st.current, step_text, lang)
+    res = _phrase(llm, st, d, h, step_text, lang)
+    log_event(conn, sid, "hint_shown",
+              {"level": h.level, "kind": h.kind, "bug_ids": bug_ids, "auto": False,
+               "source": res.source, "fallback_reason": res.fallback_reason}, problem_id=pid)
+    return {"level": h.level, "text": res.text, "kind": h.kind, "source": res.source}
 
 
 def disagree(conn, sid: str, event_id: int, comment: str = "") -> None:

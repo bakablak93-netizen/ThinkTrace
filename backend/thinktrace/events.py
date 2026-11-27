@@ -7,7 +7,8 @@ Event types and payloads:
                      corrected: bool (correct step right after an error),
                      matches: [{bug_id, confidence, level}], pattern, unknown: bool}
   parse_error       {text, code}
-  hint_shown        {level, kind: error|stuck, bug_ids, auto: bool}
+  hint_shown        {level, kind: error|stuck, bug_ids, auto: bool,
+                     source: llm|template, fallback_reason: str|None}
   disagree          {event_id, comment}
   session_finished  {}
 """
