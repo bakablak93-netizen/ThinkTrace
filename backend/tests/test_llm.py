@@ -22,7 +22,7 @@ class FakeProvider(ProviderClient):
     def __init__(self, raw=None, exc=None):
         self.raw, self.exc, self.calls = raw, exc, []
 
-    def _complete(self, system, user):
+    def _complete(self, system, user, schema_name=None, schema=None):
         self.calls.append({"system": system, "user": json.loads(user)})
         if self.exc:
             raise self.exc

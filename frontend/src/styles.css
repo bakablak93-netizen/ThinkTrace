@@ -53,7 +53,7 @@ header h1 { font-size: 1.25rem; margin: 0; }
 h2 { margin: 0 0 8px; font-size: 1.15rem; }
 h3 { margin: 0 0 8px; font-size: 1rem; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 label, legend { display: block; font-weight: 600; margin-bottom: 6px; }
-input, select { font: inherit; color: inherit; background: var(--card); border: 1px solid var(--border);
+input, select, textarea { font: inherit; color: inherit; background: var(--card); border: 1px solid var(--border);
   border-radius: 8px; padding: 10px 12px; }
 input { width: 100%; font-size: 1.1rem; }
 button { font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--border);
@@ -103,3 +103,5 @@ td:nth-child(3) { white-space: normal; min-width: 140px; }
 footer { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
 button.danger { color: var(--bad); border-color: var(--bad); }
 .notice { background: var(--notice-bg, transparent); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; }
+textarea { width: 100%; resize: vertical; }
+.explain p { margin: 6px 0; }

@@ -7,6 +7,7 @@ Stage 1 endpoints (all under /api):
   POST /sessions/{sid}/problems/{pid}/steps       submit step {text, confidence}
   POST /sessions/{sid}/problems/{pid}/hint        request hint
   POST /sessions/{sid}/transfer                   transfer problem (after a solved one)
+  POST /sessions/{sid}/problems/{pid}/explain     "explain in your own words" feedback
   POST /sessions/{sid}/disagree                   "I disagree with the assessment"
   POST /sessions/{sid}/finish                     finish session
   GET  /sessions/{sid}/report                     report
@@ -64,6 +65,11 @@ class StepIn(BaseModel):
 
 class ParseIn(BaseModel):
     text: str = Field(max_length=200)
+
+
+class ExplainIn(BaseModel):
+    step_event_id: int
+    text: str = Field(min_length=1, max_length=300)
 
 
 class DisagreeIn(BaseModel):
@@ -142,6 +148,11 @@ def create_app(db_path: str | None = None, static_dir: str | None = None,
     def hint(sid: str, pid: str, lang: Lang = "ru", conn=Depends(get_conn)):
         limited(sid)
         return tutor.request_hint(conn, sid, pid, lang, llm=llm)
+
+    @app.post("/api/sessions/{sid}/problems/{pid}/explain")
+    def explain(sid: str, pid: str, body: ExplainIn, lang: Lang = "ru", conn=Depends(get_conn)):
+        limited(sid)
+        return tutor.explain(conn, sid, pid, body.step_event_id, body.text, lang, llm=llm)
 
     @app.post("/api/sessions/{sid}/transfer")
     def transfer(sid: str, conn=Depends(get_conn)):

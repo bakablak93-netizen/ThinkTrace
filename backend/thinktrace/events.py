@@ -9,6 +9,8 @@ Event types and payloads:
   parse_error       {text, code}
   hint_shown        {level, kind: error|stuck, bug_ids, auto: bool,
                      source: llm|template, fallback_reason: str|None}
+  explanation       {step_event_id, length, source: llm|template, fallback_reason}
+                    (the explanation text itself is not stored)
   disagree          {event_id, comment}
   session_finished  {}
 """

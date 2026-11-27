@@ -50,6 +50,14 @@ export interface StepResult {
   diagnosis?: Diagnosis;
   hint?: HintView;
   problem?: ProblemView;
+  explain?: boolean;
+}
+
+export interface ExplainFeedback {
+  source: HintSource;
+  correct: string;
+  attention: string;
+  rule: string;
 }
 
 export interface ParseResult {
@@ -138,6 +146,9 @@ export const api = {
     call<StepResult>("POST", `/sessions/${sid}/problems/${pid}/steps?lang=${lang}`, { text, confidence }),
   hint: (sid: string, pid: string, lang: Lang) =>
     call<HintView>("POST", `/sessions/${sid}/problems/${pid}/hint?lang=${lang}`),
+  explain: (sid: string, pid: string, stepEventId: number, text: string, lang: Lang) =>
+    call<ExplainFeedback>("POST", `/sessions/${sid}/problems/${pid}/explain?lang=${lang}`,
+      { step_event_id: stepEventId, text }),
   disagree: (sid: string, eventId: number) =>
     call<{ ok: boolean }>("POST", `/sessions/${sid}/disagree`, { event_id: eventId }),
   finish: (sid: string) => call<{ ok: boolean }>("POST", `/sessions/${sid}/finish`),

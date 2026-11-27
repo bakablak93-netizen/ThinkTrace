@@ -31,7 +31,7 @@ from .diagnose import Diagnosis, diagnose
 from .events import list_events, log_event
 from .expr import Equation, eq_latex, eq_text
 from .hints import Hint, error_hint, next_level, stuck_hint
-from .llm import HintRequest, HintResult, LLMClient, TemplateClient
+from .llm import FeedbackRequest, HintRequest, HintResult, LLMClient, TemplateClient
 from .i18n import LANGS, pick, tr
 from .parser import ParseError, parse_equation
 from .problems import Problem, demo_problem, main_problem, transfer_problem
@@ -267,7 +267,10 @@ def submit_step(conn, sid: str, pid: str, text: str, self_confidence: str, lang:
         if solved:
             conn.execute("UPDATE problems SET solved_at = ? WHERE id = ?", (time.time(), pid))
             conn.commit()
-        return {"status": status, "event_id": eid, "problem": problem_view(conn, sid, pid)}
+        resp = {"status": status, "event_id": eid, "problem": problem_view(conn, sid, pid)}
+        # after a corrected error: offer the optional "explain in your own words" field
+        resp["explain"] = st.wrong_attempts > 0 and st.problem["kind"] == "main"
+        return resp
 
     history = session_error_bugs(conn, sid, kind=None)
     d = diagnose(st.current, step, history)
@@ -357,6 +360,60 @@ def request_hint(conn, sid: str, pid: str, lang: str = "ru", llm: LLMClient | No
               {"level": h.level, "kind": h.kind, "bug_ids": bug_ids, "auto": False,
                "source": res.source, "fallback_reason": res.fallback_reason}, problem_id=pid)
     return {"level": h.level, "text": res.text, "kind": h.kind, "source": res.source}
+
+
+# ---------------- "explain in your own words" ----------------
+
+MAX_EXPLANATION = 300
+
+
+def explain(conn, sid: str, pid: str, step_event_id: int, text: str, lang: str = "ru",
+            llm: LLMClient | None = None) -> dict:
+    """Optional feedback on the student's explanation of a corrected error.
+    Feedback only: no grade, no effect on any index. The explanation text itself is not
+    stored (it may contain personal data), only its length and the feedback source."""
+    get_session(conn, sid)
+    st = load_state(conn, sid, pid)
+    if st.problem["kind"] != "main":
+        raise TutorError("explain_disabled", 403)
+    text = (text or "").strip()
+    if not text or len(text) > MAX_EXPLANATION:
+        raise TutorError("bad_explanation")
+
+    events = list_events(conn, sid, pid)
+    if any(e["type"] == "explanation" and e["payload"]["step_event_id"] == step_event_id for e in events):
+        raise TutorError("already_explained", 409)
+    current, prev_at_error, wrong, target = st.original, None, None, None
+    for e in events:
+        if e["type"] != "step_checked":
+            continue
+        if e["id"] == step_event_id:
+            target = e
+            break
+        if e["payload"]["status"] == "error":
+            prev_at_error, wrong = current, e["payload"]["text"]
+        else:
+            current = parse_equation(e["payload"]["text"])
+    if target is None or not target["payload"].get("corrected") or wrong is None:
+        raise TutorError("event_not_found", 404)
+
+    d = diagnose(prev_at_error, parse_equation(wrong))
+    error = None
+    if len(d.matches) == 1:
+        bug = CATALOG[d.matches[0].bug_id]
+        error = {"id": bug.id, "name": pick(bug.name, lang), "description": pick(bug.description, lang)}
+    rule = (" ".join(pick(CATALOG[m.bug_id].hints[3], lang) for m in d.matches[:2])
+            if d.matches else tr("hint.general.3", lang))
+    req = FeedbackRequest(
+        language=lang, problem=eq_text(st.original), previous_step=eq_text(prev_at_error),
+        wrong_step=wrong, corrected_step=target["payload"]["text"], student_explanation=text,
+        template_rule=rule, error=error, root=unique_root(st.original),
+    )
+    res = (llm or TemplateClient()).explain_feedback(req)
+    log_event(conn, sid, "explanation",
+              {"step_event_id": step_event_id, "length": len(text), "source": res.source,
+               "fallback_reason": res.fallback_reason}, problem_id=pid)
+    return {"source": res.source, "correct": res.correct, "attention": res.attention, "rule": res.rule}
 
 
 def disagree(conn, sid: str, event_id: int, comment: str = "") -> None:

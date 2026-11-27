@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
-  api, errorMessage, type Confidence, type Diagnosis, type HintView, type ParseResult, type ProblemView,
+  api, errorMessage, type Confidence, type Diagnosis, type ExplainFeedback, type HintView, type ParseResult,
+  type ProblemView,
 } from "../api";
 import { Formula } from "../components/Formula";
 import { StatusChip, useFocusOnMount } from "../components/a11y";
@@ -34,6 +35,10 @@ export function Solve({ lang, sid, problem, onProblem, onTransfer, onReport }: P
   const [busy, setBusy] = useState(false);
   // text for screen readers: result of the last check (polite live region)
   const [announce, setAnnounce] = useState("");
+  // "explain in your own words": offered after a corrected error (optional)
+  const [explainFor, setExplainFor] = useState<number | null>(null);
+  const [explanation, setExplanation] = useState("");
+  const [feedback, setFeedback] = useState<ExplainFeedback | null>(null);
   const heading = useFocusOnMount<HTMLHeadingElement>(problem.id);
   const solvedHeading = useFocusOnMount<HTMLHeadingElement>(problem.solved);
 
@@ -41,6 +46,7 @@ export function Solve({ lang, sid, problem, onProblem, onTransfer, onReport }: P
   useEffect(() => {
     setText(""); setPreview(null); setConfidence(null); setMessage("");
     setDiagnoses({}); setDisagreed({}); setHints([]); setAnnounce("");
+    setExplainFor(null); setExplanation(""); setFeedback(null);
   }, [problem.id]);
 
   // live preview (debounced)
@@ -68,6 +74,8 @@ export function Solve({ lang, sid, problem, onProblem, onTransfer, onReport }: P
         return;
       }
       setAnnounce(describe(r.status, text, r.diagnosis));
+      setFeedback(null); setExplanation("");
+      setExplainFor(r.explain && r.event_id !== undefined ? r.event_id : null);
       if (r.status === "error" && r.event_id !== undefined && r.diagnosis) {
         setDiagnoses((d) => ({ ...d, [r.event_id!]: r.diagnosis! }));
       }
@@ -89,6 +97,20 @@ export function Solve({ lang, sid, problem, onProblem, onTransfer, onReport }: P
     if (d && !d.unknown) s += ` ${t(lang, d.ambiguous ? "diag.several" : "diag.possible")} ${d.candidates.map((c) => c.name).join("; ")}.`;
     if (d?.unknown) s += ` ${t(lang, "diag.unknown")}`;
     return s;
+  }
+
+  async function sendExplanation(e: React.FormEvent) {
+    e.preventDefault();
+    if (explainFor === null || !explanation.trim()) return;
+    setBusy(true);
+    try {
+      setFeedback(await api.explain(sid, problem.id, explainFor, explanation.trim(), lang));
+      setExplainFor(null);
+    } catch (err) {
+      fail(err);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function askHint() {
@@ -180,6 +202,40 @@ export function Solve({ lang, sid, problem, onProblem, onTransfer, onReport }: P
           ))}
         </section>
       )}
+      </div>
+
+      {explainFor !== null && (
+        <form className="card explain" onSubmit={sendExplanation} aria-labelledby="explain-title">
+          <h2 className="label" id="explain-title">{t(lang, "explain.title")}</h2>
+          <label htmlFor="explain-text">{t(lang, "explain.question")}</label>
+          <textarea id="explain-text" value={explanation} maxLength={300} rows={3}
+            onChange={(e) => setExplanation(e.target.value)} aria-describedby="explain-warning explain-count" />
+          <p id="explain-warning" className="small">{t(lang, "explain.no_personal")}</p>
+          <p id="explain-count" className="small muted">{explanation.length}/300</p>
+          <div className="row">
+            <button className="primary" disabled={busy || !explanation.trim()}>{t(lang, "explain.send")}</button>
+            <button type="button" onClick={() => setExplainFor(null)}>{t(lang, "explain.skip")}</button>
+          </div>
+        </form>
+      )}
+      <div aria-live="polite">
+        {feedback && (
+          <section className="card explain" aria-label={t(lang, "explain.title")}>
+            <div className="hint-head">
+              <span className="label">{t(lang, "explain.feedback")}</span>
+              <span className={`source ${feedback.source}`}>{t(lang, `explain.source_${feedback.source}`)}</span>
+            </div>
+            {feedback.source === "llm" ? (
+              <>
+                <p><b>{t(lang, "explain.correct")}</b> {feedback.correct}</p>
+                <p><b>{t(lang, "explain.attention")}</b> {feedback.attention}</p>
+              </>
+            ) : (
+              <p><b>{t(lang, "explain.compare")}</b> {feedback.rule}</p>
+            )}
+            <p className="small muted">{t(lang, "explain.no_grade")}</p>
+          </section>
+        )}
       </div>
 
       {problem.solved ? (
