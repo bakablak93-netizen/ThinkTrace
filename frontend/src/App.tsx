@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api, ApiError, type ProblemView } from "./api";
+import { api, errorMessage, type ProblemView } from "./api";
 import { t, type Lang } from "./i18n";
 import { Login } from "./pages/Login";
 import { Report } from "./pages/Report";
@@ -20,7 +20,7 @@ export default function App() {
     try {
       await fn();
     } catch (err) {
-      setError(err instanceof ApiError ? t(lang, "err.generic", { code: err.code }) : t(lang, "err.network"));
+      setError(errorMessage(lang, err));
     }
   }
 

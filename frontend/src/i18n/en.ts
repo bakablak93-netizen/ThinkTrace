@@ -75,6 +75,7 @@ const en: Dict = {
 
   "err.bad_nickname": "Nickname: 2–24 characters, letters, digits, _ and -.",
   "err.network": "Cannot reach the server. Is the backend running?",
+  "err.rate_limited": "The demo request limit has been reached. Try again later or start a new session.",
   "err.generic": "Something went wrong: {code}",
 };
 

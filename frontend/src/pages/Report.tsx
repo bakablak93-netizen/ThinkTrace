@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, type Report as ReportData, type ReportProblem } from "../api";
+import { api, errorMessage, type Report as ReportData, type ReportProblem } from "../api";
 import { t, type Lang } from "../i18n";
 
 function mmss(sec: number) {
@@ -52,7 +52,7 @@ export function Report({ lang, sid, onRestart }: { lang: Lang; sid: string; onRe
   const [error, setError] = useState("");
 
   useEffect(() => {
-    api.report(sid, lang).then(setData).catch(() => setError(t(lang, "err.network")));
+    api.report(sid, lang).then(setData).catch((err) => setError(errorMessage(lang, err)));
   }, [sid, lang]);
 
   if (error) return <p className="error">{error}</p>;

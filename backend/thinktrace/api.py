@@ -11,7 +11,12 @@ Stage 1 endpoints (all under /api):
   POST /sessions/{sid}/finish                     finish session
   GET  /sessions/{sid}/report                     report
   POST /parse                                     live preview {text} -> latex / error
+  GET  /health                                    liveness check (outside /api)
 Stage 2: delete my data, modes independent / exam, teacher view.
+
+If the built frontend exists (frontend/dist, or STATIC_DIR), it is served at "/" by the
+same app: one service, one URL. Local development with Vite keeps working unchanged.
+Endpoints that will call the LLM (steps, hint, report) are rate limited (ratelimit.py).
 
 The session id (random uuid4) acts as the access token for the session's data.
 Run: uvicorn thinktrace.api:create_app --factory --port 8000
@@ -20,18 +25,21 @@ from __future__ import annotations
 
 import os
 import sqlite3
+from pathlib import Path
 from typing import Iterator, Literal
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from . import db, tutor
 from .expr import eq_latex, eq_text
 from .i18n import tr
 from .parser import ParseError, parse_equation
+from .ratelimit import RateLimiter
 from .report import build_report
 
 Lang = Literal["ru", "kk", "en"]
@@ -61,10 +69,18 @@ class DisagreeIn(BaseModel):
     comment: str = Field(default="", max_length=500)
 
 
-def create_app(db_path: str | None = None) -> FastAPI:
+DEFAULT_STATIC_DIR = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+
+
+def create_app(db_path: str | None = None, static_dir: str | None = None,
+               limiter: RateLimiter | None = None) -> FastAPI:
     load_dotenv()
     path = db_path or os.getenv("DATABASE_PATH", "thinktrace.sqlite3")
     db.init(path)
+    limiter = limiter or RateLimiter(
+        per_session=int(os.getenv("RATE_LIMIT_PER_SESSION", "300")),
+        per_day=int(os.getenv("RATE_LIMIT_PER_DAY", "5000")),
+    )
 
     app = FastAPI(title="ThinkTrace AI")
     app.add_middleware(
@@ -80,6 +96,14 @@ def create_app(db_path: str | None = None) -> FastAPI:
             yield conn
         finally:
             conn.close()
+
+    def limited(sid: str) -> None:
+        if not limiter.hit(sid):
+            raise tutor.TutorError("rate_limited", 429)
+
+    @app.get("/health")
+    def health():
+        return {"status": "ok"}
 
     @app.exception_handler(tutor.TutorError)
     def _tutor_error(_: Request, exc: tutor.TutorError):
@@ -108,10 +132,12 @@ def create_app(db_path: str | None = None) -> FastAPI:
 
     @app.post("/api/sessions/{sid}/problems/{pid}/steps")
     def submit_step(sid: str, pid: str, body: StepIn, lang: Lang = "ru", conn=Depends(get_conn)):
+        limited(sid)
         return tutor.submit_step(conn, sid, pid, body.text, body.confidence, lang)
 
     @app.post("/api/sessions/{sid}/problems/{pid}/hint")
     def hint(sid: str, pid: str, lang: Lang = "ru", conn=Depends(get_conn)):
+        limited(sid)
         return tutor.request_hint(conn, sid, pid, lang)
 
     @app.post("/api/sessions/{sid}/transfer")
@@ -130,7 +156,13 @@ def create_app(db_path: str | None = None) -> FastAPI:
 
     @app.get("/api/sessions/{sid}/report")
     def report(sid: str, lang: Lang = "ru", conn=Depends(get_conn)):
+        limited(sid)
         return build_report(conn, sid, lang)
+
+    # Built frontend at "/" -- registered last, so /api/* and /health take precedence.
+    static = Path(static_dir or os.getenv("STATIC_DIR") or DEFAULT_STATIC_DIR)
+    if (static / "index.html").is_file():
+        app.mount("/", StaticFiles(directory=static, html=True), name="frontend")
 
     return app
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  api, ApiError, type Confidence, type Diagnosis, type HintView, type ParseResult, type ProblemView,
+  api, errorMessage, type Confidence, type Diagnosis, type HintView, type ParseResult, type ProblemView,
 } from "../api";
 import { Formula } from "../components/Formula";
 import { t, type Lang } from "../i18n";
@@ -48,7 +48,7 @@ export function Solve({ lang, sid, problem, onProblem, onTransfer, onReport }: P
   }, [text, lang]);
 
   function fail(err: unknown) {
-    setMessage(err instanceof ApiError ? t(lang, "err.generic", { code: err.code }) : t(lang, "err.network"));
+    setMessage(errorMessage(lang, err));
   }
 
   async function check(e: React.FormEvent) {

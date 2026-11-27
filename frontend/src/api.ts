@@ -1,4 +1,4 @@
-import type { Lang } from "./i18n";
+import { t, type Lang } from "./i18n";
 
 export type Confidence = "low" | "medium" | "high";
 export type StepStatus = "correct" | "solved" | "error";
@@ -102,6 +102,12 @@ export class ApiError extends Error {
   constructor(public code: string, public status: number) {
     super(code);
   }
+}
+
+export function errorMessage(lang: Lang, err: unknown): string {
+  if (!(err instanceof ApiError)) return t(lang, "err.network");
+  if (err.code === "rate_limited") return t(lang, "err.rate_limited");
+  return t(lang, "err.generic", { code: err.code });
 }
 
 async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
