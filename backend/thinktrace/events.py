@@ -11,6 +11,7 @@ Event types and payloads:
                      source: llm|template, fallback_reason: str|None}
   explanation       {step_event_id, length, source: llm|template, fallback_reason}
                     (the explanation text itself is not stored)
+  find_error_answer {step_index, bug_id, step_correct, type_correct}   (mode "find the error")
   disagree          {event_id, comment}
   session_finished  {}
 """

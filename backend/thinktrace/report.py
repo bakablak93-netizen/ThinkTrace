@@ -29,7 +29,7 @@ def build_report(conn: sqlite3.Connection, sid: str, lang: str = "ru") -> dict:
             "source_bug_id": r["source_bug_id"],
             "duration_sec": round((r["solved_at"] or (events[-1]["ts"] if events else r["created_at"]))
                                   - r["created_at"], 1),
-            "steps": [], "hints": [], "errors_by_bug": {},
+            "steps": [], "hints": [], "errors_by_bug": {}, "answers": [],
         }
         for r in conn.execute("SELECT * FROM problems WHERE session_id = ? ORDER BY created_at", (sid,))
     }
@@ -55,6 +55,9 @@ def build_report(conn: sqlite3.Connection, sid: str, lang: str = "ru") -> dict:
             p["hints"].append({"t": t, "level": pl["level"], "kind": pl["kind"], "auto": pl["auto"],
                                "source": source})
             item.update(level=pl["level"], auto=pl["auto"], source=source)
+        elif e["type"] == "find_error_answer":
+            p["answers"].append({"t": t, **pl})
+            item.update(step_correct=pl["step_correct"], type_correct=pl["type_correct"])
         elif e["type"] == "parse_error":
             item.update(text=pl["text"])
         timeline.append(item)

@@ -8,7 +8,27 @@ function mmss(sec: number) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
+function FindErrorBlock({ lang, p }: { lang: Lang; p: ReportProblem }) {
+  return (
+    <section className="card">
+      <h3 className="label">{t(lang, "finderr.title")}</h3>
+      <p className="mono">{p.text}{!p.solved && <span className="chip error">{t(lang, "report.unsolved")}</span>}</p>
+      <p>{t(lang, "finderr.report", { tries: p.answers.length, hints: p.hints.length })}</p>
+      <ol>
+        {p.answers.map((a, i) => (
+          <li key={i}>
+            {t(lang, "finderr.step_n", { n: a.step_index + 1 })}:{" "}
+            {t(lang, a.step_correct ? "finderr.step_ok" : "finderr.step_bad")},{" "}
+            {t(lang, a.type_correct ? "finderr.type_ok" : "finderr.type_bad")}
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
 function ProblemBlock({ lang, p }: { lang: Lang; p: ReportProblem }) {
+  if (p.kind === "find_error") return <FindErrorBlock lang={lang} p={p} />;
   return (
     <section className="card">
       <div className="label">{t(lang, p.kind === "main" ? "report.main" : "report.transfer")}</div>

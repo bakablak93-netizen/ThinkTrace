@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
-import { api, errorMessage, type ProblemView } from "./api";
+import { api, errorMessage, type FindErrorTask, type ProblemView } from "./api";
 import { FontSizeControl } from "./components/a11y";
 import { t, type Lang } from "./i18n";
+import { FindError } from "./pages/FindError";
 import { Login } from "./pages/Login";
 import { Report } from "./pages/Report";
 import { Solve } from "./pages/Solve";
 import { Start } from "./pages/Start";
 
-type Screen = "login" | "start" | "solve" | "report";
+type Screen = "login" | "start" | "solve" | "find_error" | "report";
 
 export default function App() {
   const [lang, setLang] = useState<Lang>("ru");
@@ -16,6 +17,7 @@ export default function App() {
   const [token, setToken] = useState("");   // kept only in memory, needed to delete my data
   const [notice, setNotice] = useState("");
   const [problem, setProblem] = useState<ProblemView | null>(null);
+  const [findTask, setFindTask] = useState<FindErrorTask | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => { document.documentElement.lang = lang; }, [lang]);
@@ -36,9 +38,13 @@ export default function App() {
   const deleteMyData = () => run(async () => {
     if (!window.confirm(t(lang, "delete.confirm"))) return;
     await api.deleteMyData(sid, token);
-    setSid(""); setToken(""); setProblem(null);
+    setSid(""); setToken(""); setProblem(null); setFindTask(null);
     setNotice(t(lang, "delete.done"));
     setScreen("login");
+  });
+  const toFindError = () => run(async () => {
+    setFindTask(await api.findError(sid, lang));
+    setScreen("find_error");
   });
   const toTransfer = () => run(async () => setProblem(await api.transfer(sid)));
   const toReport = () => run(async () => {
@@ -65,7 +71,11 @@ export default function App() {
           <Login lang={lang} notice={notice}
             onDone={(id, tok) => { setSid(id); setToken(tok); setNotice(""); setScreen("start"); }} />
         )}
-        {screen === "start" && <Start lang={lang} onPick={pick} />}
+        {screen === "start" && <Start lang={lang} onPick={pick} onFindError={toFindError} />}
+        {screen === "find_error" && findTask && (
+          <FindError lang={lang} sid={sid} task={findTask} onTask={setFindTask}
+            onNext={toFindError} onReport={toReport} />
+        )}
         {screen === "solve" && problem && (
           <Solve lang={lang} sid={sid} problem={problem} onProblem={setProblem}
             onTransfer={toTransfer} onReport={toReport} />

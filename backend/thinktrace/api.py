@@ -8,6 +8,9 @@ Stage 1 endpoints (all under /api):
   POST /sessions/{sid}/problems/{pid}/hint        request hint
   POST /sessions/{sid}/transfer                   transfer problem (after a solved one)
   POST /sessions/{sid}/problems/{pid}/explain     "explain in your own words" feedback
+  POST /sessions/{sid}/find-error                  mode "find the error": new task
+  POST /sessions/{sid}/find-error/{pid}/answer     {step_index, bug_id}
+  POST /sessions/{sid}/find-error/{pid}/hint
   POST /sessions/{sid}/disagree                   "I disagree with the assessment"
   POST /sessions/{sid}/finish                     finish session
   GET  /sessions/{sid}/report                     report
@@ -70,6 +73,11 @@ class ParseIn(BaseModel):
 class ExplainIn(BaseModel):
     step_event_id: int
     text: str = Field(min_length=1, max_length=300)
+
+
+class FindErrorAnswerIn(BaseModel):
+    step_index: int
+    bug_id: str = Field(max_length=40)
 
 
 class DisagreeIn(BaseModel):
@@ -153,6 +161,19 @@ def create_app(db_path: str | None = None, static_dir: str | None = None,
     def explain(sid: str, pid: str, body: ExplainIn, lang: Lang = "ru", conn=Depends(get_conn)):
         limited(sid)
         return tutor.explain(conn, sid, pid, body.step_event_id, body.text, lang, llm=llm)
+
+    @app.post("/api/sessions/{sid}/find-error")
+    def find_error_new(sid: str, lang: Lang = "ru", conn=Depends(get_conn)):
+        view = tutor.new_find_error(conn, sid)
+        return tutor.find_error_view(conn, sid, view["id"], lang)
+
+    @app.post("/api/sessions/{sid}/find-error/{pid}/answer")
+    def find_error_answer(sid: str, pid: str, body: FindErrorAnswerIn, lang: Lang = "ru", conn=Depends(get_conn)):
+        return tutor.answer_find_error(conn, sid, pid, body.step_index, body.bug_id, lang)
+
+    @app.post("/api/sessions/{sid}/find-error/{pid}/hint")
+    def find_error_hint(sid: str, pid: str, lang: Lang = "ru", conn=Depends(get_conn)):
+        return tutor.find_error_hint(conn, sid, pid, lang)
 
     @app.post("/api/sessions/{sid}/transfer")
     def transfer(sid: str, conn=Depends(get_conn)):

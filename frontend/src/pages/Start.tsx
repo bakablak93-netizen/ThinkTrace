@@ -1,7 +1,7 @@
 import { useFocusOnMount } from "../components/a11y";
 import { t, type Lang } from "../i18n";
 
-export function Start({ lang, onPick }: { lang: Lang; onPick: (demo: boolean) => void }) {
+export function Start({ lang, onPick, onFindError }: { lang: Lang; onPick: (demo: boolean) => void; onFindError: () => void }) {
   const heading = useFocusOnMount<HTMLHeadingElement>();
   return (
     <div className="card">
@@ -10,6 +10,7 @@ export function Start({ lang, onPick }: { lang: Lang; onPick: (demo: boolean) =>
       <div className="row">
         <button className="primary" onClick={() => onPick(true)}>{t(lang, "start.demo")}</button>
         <button onClick={() => onPick(false)}>{t(lang, "start.random")}</button>
+        <button onClick={onFindError}>{t(lang, "start.find_error")}</button>
       </div>
     </div>
   );

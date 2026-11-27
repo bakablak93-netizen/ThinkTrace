@@ -48,6 +48,12 @@ MESSAGES: dict[str, dict[str, str]] = {
         "en": "Let's go through it. {rule} A correct next step: “{prev}” → “{correct}”. Continue from there yourself.",
     },
 
+    # ---- mode "find the error" ----
+    "finderr.hint.1": {
+        "ru": "Проверь переходы по очереди: на каком шаге обе части перестают быть равны при одном и том же x?",
+        "en": "Check the steps one by one: at which step do the two sides stop being equal for the same x?",
+    },
+
     # ---- "what next?" hints (no error yet, the student is stuck) ----
     "stuck.expand.1": {"ru": "Что можно сделать со скобками, чтобы упростить уравнение?", "en": "What could you do with the brackets to simplify the equation?"},
     "stuck.expand.2": {"ru": "Начни с раскрытия скобок.", "en": "Start by expanding the brackets."},

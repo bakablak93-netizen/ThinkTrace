@@ -53,6 +53,25 @@ export interface StepResult {
   explain?: boolean;
 }
 
+export interface FindErrorTask {
+  id: string;
+  kind: "find_error";
+  text: string;
+  latex: string;
+  steps: { index: number; text: string; latex: string }[];
+  options: { bug_id: string; name: string }[];
+  solved: boolean;
+  error_index?: number;
+  bug_id?: string;
+}
+
+export interface FindErrorResult {
+  step_correct: boolean;
+  type_correct: boolean;
+  solved: boolean;
+  problem: FindErrorTask;
+}
+
 export interface ExplainFeedback {
   source: HintSource;
   correct: string;
@@ -81,24 +100,27 @@ export interface ReportStep {
 
 export interface ReportProblem {
   id: string;
-  kind: "main" | "transfer";
+  kind: "main" | "transfer" | "find_error";
   text: string;
   solved: boolean;
   duration_sec: number;
   steps: ReportStep[];
   hints: { t: number; level: number; kind: string; auto: boolean; source: HintSource }[];
   errors_by_bug: Record<string, number>;
+  answers: { t: number; step_index: number; bug_id: string; step_correct: boolean; type_correct: boolean }[];
 }
 
 export interface TimelineItem {
   t: number;
   type: string;
-  problem_kind: "main" | "transfer" | null;
+  problem_kind: "main" | "transfer" | "find_error" | null;
   text?: string;
   status?: string;
   level?: number;
   auto?: boolean;
   source?: HintSource;
+  step_correct?: boolean;
+  type_correct?: boolean;
 }
 
 export interface Report {
@@ -149,6 +171,12 @@ export const api = {
   explain: (sid: string, pid: string, stepEventId: number, text: string, lang: Lang) =>
     call<ExplainFeedback>("POST", `/sessions/${sid}/problems/${pid}/explain?lang=${lang}`,
       { step_event_id: stepEventId, text }),
+  findError: (sid: string, lang: Lang) => call<FindErrorTask>("POST", `/sessions/${sid}/find-error?lang=${lang}`),
+  findErrorAnswer: (sid: string, pid: string, stepIndex: number, bugId: string, lang: Lang) =>
+    call<FindErrorResult>("POST", `/sessions/${sid}/find-error/${pid}/answer?lang=${lang}`,
+      { step_index: stepIndex, bug_id: bugId }),
+  findErrorHint: (sid: string, pid: string, lang: Lang) =>
+    call<HintView>("POST", `/sessions/${sid}/find-error/${pid}/hint?lang=${lang}`),
   disagree: (sid: string, eventId: number) =>
     call<{ ok: boolean }>("POST", `/sessions/${sid}/disagree`, { event_id: eventId }),
   finish: (sid: string) => call<{ ok: boolean }>("POST", `/sessions/${sid}/finish`),
