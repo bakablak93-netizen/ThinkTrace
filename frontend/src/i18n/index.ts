@@ -8,6 +8,8 @@ export type Dict = Record<string, string>;
 const dicts: Record<Lang, Dict> = { ru, kk, en };
 
 // Missing key in kk/en falls back to ru, then to the key itself.
-export function t(lang: Lang, key: string): string {
-  return dicts[lang][key] ?? dicts.ru[key] ?? key;
+export function t(lang: Lang, key: string, params?: Record<string, string | number>): string {
+  let s = dicts[lang][key] ?? dicts.ru[key] ?? key;
+  if (params) for (const [k, v] of Object.entries(params)) s = s.replace(`{${k}}`, String(v));
+  return s;
 }

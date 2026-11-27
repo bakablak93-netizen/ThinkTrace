@@ -1,5 +1,81 @@
 import type { Dict } from ".";
+
 const ru: Dict = {
   "app.title": "ThinkTrace AI",
+  "app.tagline": "Решай уравнение по шагам — система проверит каждый шаг и подскажет, не выдавая ответ.",
+
+  "login.nick": "Ваш ник",
+  "login.nick_hint": "Только ник: без имени и почты. 2–24 символа: буквы, цифры, _ и -.",
+  "login.go": "Войти",
+
+  "start.title": "Выбор задачи",
+  "start.topic": "Тема: линейные уравнения",
+  "start.demo": "Демо-задача",
+  "start.random": "Случайная задача",
+
+  "solve.problem": "Задача",
+  "solve.transfer_badge": "Задача на перенос — без подсказок",
+  "solve.steps": "Твои шаги",
+  "solve.no_steps": "Пока шагов нет. Запиши первый шаг преобразования.",
+  "solve.input": "Следующий шаг",
+  "solve.placeholder": "например 2x + 6 = 14",
+  "solve.preview": "Как система поняла запись:",
+  "solve.confidence": "Насколько ты уверен в этом шаге?",
+  "solve.check": "Проверить",
+  "solve.hint": "Подсказка",
+  "solve.hint_level": "Подсказка, уровень {level}",
+  "solve.solved": "Уравнение решено!",
+  "solve.to_transfer": "Похожая задача без подсказок",
+  "solve.to_report": "Завершить и открыть отчёт",
+  "solve.choose_confidence": "Сначала выбери уверенность",
+
+  "conf.low": "Низкая",
+  "conf.medium": "Средняя",
+  "conf.high": "Высокая",
+
+  "status.correct": "Верно",
+  "status.solved": "Решено",
+  "status.error": "Ошибка",
+
+  "diag.possible": "Возможная ошибка:",
+  "diag.several": "Возможны разные ошибки:",
+  "diag.unknown": "Шаг неверный, но тип ошибки не распознан.",
+  "diag.repeated": "Эта ошибка уже встречалась в сессии.",
+  "diag.note": "Диагноз вероятностный и может ошибаться.",
+  "diag.sys_conf": "уверенность системы",
+  "diag.disagree": "Не согласен с оценкой",
+  "diag.disagreed": "Спасибо, ваше несогласие сохранено.",
+  "diag.transfer_hidden": "Разбор ошибок — в отчёте после решения.",
+
+  "report.title": "Отчёт",
+  "report.steps": "Шагов",
+  "report.errors": "Неверных шагов",
+  "report.hints": "Подсказок",
+  "report.corrections": "Исправлений",
+  "report.disagreements": "Несогласий",
+  "report.main": "Основная задача",
+  "report.transfer": "Задача на перенос",
+  "report.step": "Шаг",
+  "report.result": "Результат",
+  "report.error_type": "Тип ошибки",
+  "report.self_conf": "Твоя уверенность",
+  "report.errors_by_type": "Ошибки по типам",
+  "report.timeline": "Как шло решение",
+  "report.new": "Начать заново",
+  "report.unsolved": "не решена",
+  "report.auto": "автоматически",
+
+  "tl.session_started": "Начало сессии",
+  "tl.problem_started": "Новая задача",
+  "tl.step_checked": "Шаг",
+  "tl.parse_error": "Не удалось разобрать запись",
+  "tl.hint_shown": "Подсказка, уровень {level}",
+  "tl.disagree": "Несогласие с оценкой",
+  "tl.session_finished": "Конец сессии",
+
+  "err.bad_nickname": "Ник: 2–24 символа, буквы, цифры, _ и -.",
+  "err.network": "Нет связи с сервером. Проверьте, что backend запущен.",
+  "err.generic": "Что-то пошло не так: {code}",
 };
+
 export default ru;

@@ -1,5 +1,81 @@
 import type { Dict } from ".";
+
 const en: Dict = {
   "app.title": "ThinkTrace AI",
+  "app.tagline": "Solve the equation step by step — every step is checked and you get hints, never the answer.",
+
+  "login.nick": "Your nickname",
+  "login.nick_hint": "Nickname only: no name or email. 2–24 characters: letters, digits, _ and -.",
+  "login.go": "Enter",
+
+  "start.title": "Choose a problem",
+  "start.topic": "Topic: linear equations",
+  "start.demo": "Demo problem",
+  "start.random": "Random problem",
+
+  "solve.problem": "Problem",
+  "solve.transfer_badge": "Transfer problem — no hints",
+  "solve.steps": "Your steps",
+  "solve.no_steps": "No steps yet. Write your first transformation.",
+  "solve.input": "Next step",
+  "solve.placeholder": "e.g. 2x + 6 = 14",
+  "solve.preview": "How the system read it:",
+  "solve.confidence": "How confident are you in this step?",
+  "solve.check": "Check",
+  "solve.hint": "Hint",
+  "solve.hint_level": "Hint, level {level}",
+  "solve.solved": "Solved!",
+  "solve.to_transfer": "Similar problem without hints",
+  "solve.to_report": "Finish and see the report",
+  "solve.choose_confidence": "Choose your confidence first",
+
+  "conf.low": "Low",
+  "conf.medium": "Medium",
+  "conf.high": "High",
+
+  "status.correct": "Correct",
+  "status.solved": "Solved",
+  "status.error": "Error",
+
+  "diag.possible": "Possible error:",
+  "diag.several": "Several errors are possible:",
+  "diag.unknown": "The step is wrong, but the error type was not recognised.",
+  "diag.repeated": "This error has already occurred in this session.",
+  "diag.note": "The diagnosis is probabilistic and can be wrong.",
+  "diag.sys_conf": "system confidence",
+  "diag.disagree": "I disagree with the assessment",
+  "diag.disagreed": "Thanks, your disagreement was saved.",
+  "diag.transfer_hidden": "The error analysis is in the report after solving.",
+
+  "report.title": "Report",
+  "report.steps": "Steps",
+  "report.errors": "Wrong steps",
+  "report.hints": "Hints",
+  "report.corrections": "Corrections",
+  "report.disagreements": "Disagreements",
+  "report.main": "Main problem",
+  "report.transfer": "Transfer problem",
+  "report.step": "Step",
+  "report.result": "Result",
+  "report.error_type": "Error type",
+  "report.self_conf": "Your confidence",
+  "report.errors_by_type": "Errors by type",
+  "report.timeline": "How the solving went",
+  "report.new": "Start over",
+  "report.unsolved": "not solved",
+  "report.auto": "automatic",
+
+  "tl.session_started": "Session started",
+  "tl.problem_started": "New problem",
+  "tl.step_checked": "Step",
+  "tl.parse_error": "Could not read the input",
+  "tl.hint_shown": "Hint, level {level}",
+  "tl.disagree": "Disagreed with the assessment",
+  "tl.session_finished": "Session finished",
+
+  "err.bad_nickname": "Nickname: 2–24 characters, letters, digits, _ and -.",
+  "err.network": "Cannot reach the server. Is the backend running?",
+  "err.generic": "Something went wrong: {code}",
 };
+
 export default en;
