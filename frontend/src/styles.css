@@ -114,3 +114,5 @@ textarea { width: 100%; resize: vertical; }
 .choice input { width: 1.1rem; height: 1.1rem; margin: 0; accent-color: var(--accent); }
 .choice-n { font-weight: 600; min-width: 4.5em; }
 .choice:has(input:focus-visible) { outline: 3px solid var(--focus); outline-offset: 2px; }
+.index-value { font-size: 2rem; font-weight: 700; margin: 4px 0 8px; }
+details summary { cursor: pointer; color: var(--accent); }

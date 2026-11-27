@@ -1,11 +1,35 @@
 import { useEffect, useState } from "react";
-import { api, errorMessage, type Report as ReportData, type ReportProblem } from "../api";
+import { api, errorMessage, type Independence, type Report as ReportData, type ReportProblem } from "../api";
 import { StatusChip, useFocusOnMount } from "../components/a11y";
 import { t, type Lang } from "../i18n";
 
 function mmss(sec: number) {
   const s = Math.max(0, Math.round(sec));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+function IndexBlock({ lang, ix }: { lang: Lang; ix: Independence }) {
+  const pct = (v: number) => `${Math.round(v * 100)}%`;
+  return (
+    <section className="card" aria-labelledby="index-title">
+      <h3 id="index-title" className="label">{t(lang, "index.title")}</h3>
+      <p className="index-value">
+        {ix.value}<span className="small muted"> / 100</span>
+        {ix.partial && <span className="small muted"> — {t(lang, "index.partial")}</span>}
+      </p>
+      <ul>
+        <li>{t(lang, "index.hints", { n: ix.hints_requested, v: pct(ix.hints_component) })}</li>
+        <li>{t(lang, "index.attempts", { ok: ix.steps_correct, total: ix.steps_total, v: pct(ix.attempts_component) })}</li>
+        <li>{ix.transfer_component === null ? t(lang, "index.transfer_none")
+          : t(lang, "index.transfer", { v: pct(ix.transfer_component) })}</li>
+      </ul>
+      <details>
+        <summary>{t(lang, "index.how")}</summary>
+        <p className="small">{t(lang, "index.formula")}</p>
+      </details>
+      <p className="small muted">{t(lang, "index.not_grade")}</p>
+    </section>
+  );
 }
 
 function FindErrorBlock({ lang, p }: { lang: Lang; p: ReportProblem }) {
@@ -97,6 +121,7 @@ export function Report({ lang, sid, onRestart }: { lang: Lang; sid: string; onRe
         <p className="small muted">{data.note}</p>
       </section>
 
+      {data.independence && <IndexBlock lang={lang} ix={data.independence} />}
       {data.problems.map((p) => <ProblemBlock key={p.id} lang={lang} p={p} />)}
 
       <section className="card">

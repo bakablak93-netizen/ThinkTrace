@@ -1,8 +1,25 @@
 """Session report built only from the event log.
 
-Stage 1: steps, errors, hints, corrections, transfer result, timeline.
-Stage 2 adds the Independence Index (formula will be documented here).
+Contents: steps, errors, hints, corrections, transfer result, timeline, Independence Index.
 The report never draws conclusions about a person's abilities; it describes the process.
+
+Independence Index (0..100), computed only from the event log of this session:
+
+    A (hints)    = max(0, 1 - H / 4)
+                   H = hints the student REQUESTED on main problems. Automatic hints after an
+                   error (smart_tutor) are not counted: the error itself is already in B.
+    B (attempts) = correct steps / all checked steps on main problems
+                   (input that could not be parsed is not a step and is not counted)
+    C (transfer) = 1 if the transfer problem was solved without wrong steps,
+                   0.5 if solved with wrong steps, 0 if started but not solved
+
+    I = 100 * (0.4*A + 0.3*B + 0.3*C)
+    If no transfer problem was started, C is left out and the weights are renormalised:
+    I = 100 * (0.4*A + 0.3*B) / 0.7, and the index is marked partial.
+    No main problem attempted -> no index.
+
+Not included: "find the error" and "explain in your own words" (feedback only).
+The index describes how independently THIS session went; it is not a grade.
 """
 from __future__ import annotations
 
@@ -99,6 +116,8 @@ def build_report(conn: sqlite3.Connection, sid: str, lang: str = "ru") -> dict:
         else:
             tstatus, ttext = "ok", tr("report.transfer.ok", lang)
 
+    index = independence_index(main, transfer[-1] if transfer else None)
+
     summary = tr("report.summary", lang, solved=sum(p["solved"] for p in main), total=len(main),
                  errors=sum(s["status"] == "error" for p in main for s in p["steps"]),
                  hints=sum(len(p["hints"]) for p in main))
@@ -109,5 +128,35 @@ def build_report(conn: sqlite3.Connection, sid: str, lang: str = "ru") -> dict:
         "totals": totals,
         "problems": list(problems.values()),
         "transfer": {"status": tstatus, "text": ttext},
+        "independence": index,
         "timeline": timeline,
+    }
+
+
+W_HINTS, W_ATTEMPTS, W_TRANSFER = 0.4, 0.3, 0.3
+HINTS_TO_ZERO = 4
+
+
+def independence_index(main: list[dict], transfer: dict | None) -> dict | None:
+    """See the module docstring for the formula."""
+    steps = [s for p in main for s in p["steps"]]
+    if not steps:
+        return None
+    requested = sum(1 for p in main for h in p["hints"] if not h["auto"])
+    a = max(0.0, 1 - requested / HINTS_TO_ZERO)
+    b = sum(s["status"] != "error" for s in steps) / len(steps)
+    if transfer is None:
+        c, partial = None, True
+        value = 100 * (W_HINTS * a + W_ATTEMPTS * b) / (W_HINTS + W_ATTEMPTS)
+    else:
+        errors = any(s["status"] == "error" for s in transfer["steps"])
+        c = 0.0 if not transfer["solved"] else (0.5 if errors else 1.0)
+        partial = False
+        value = 100 * (W_HINTS * a + W_ATTEMPTS * b + W_TRANSFER * c)
+    return {
+        "value": round(value), "partial": partial,
+        "hints_requested": requested, "hints_component": round(a, 2),
+        "steps_correct": sum(s["status"] != "error" for s in steps), "steps_total": len(steps),
+        "attempts_component": round(b, 2),
+        "transfer_component": None if c is None else round(c, 2),
     }

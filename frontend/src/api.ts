@@ -123,12 +123,24 @@ export interface TimelineItem {
   type_correct?: boolean;
 }
 
+export interface Independence {
+  value: number;
+  partial: boolean;
+  hints_requested: number;
+  hints_component: number;
+  steps_correct: number;
+  steps_total: number;
+  attempts_component: number;
+  transfer_component: number | null;
+}
+
 export interface Report {
   note: string;
   summary: string;
   totals: { steps: number; errors: number; hints: number; corrections: number; disagreements: number };
   problems: ReportProblem[];
   transfer: { status: string; text: string };
+  independence: Independence | null;
   timeline: TimelineItem[];
 }
 
