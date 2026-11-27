@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, errorMessage, type FindErrorTask, type ProblemView } from "./api";
+import { api, errorMessage, type BankLevel, type FindErrorTask, type ProblemView } from "./api";
 import { Logo } from "./components/Logo";
 import { FontSizeControl } from "./components/a11y";
 import { t, type Lang } from "./i18n";
@@ -34,6 +34,11 @@ export default function App() {
 
   const pick = (demo: boolean) => run(async () => {
     setProblem(await api.newProblem(sid, demo));
+    setScreen("solve");
+  });
+  // problem bank: first problem of a level, or the next one after the current problem
+  const pickLevel = (level: BankLevel, after?: string | null) => run(async () => {
+    setProblem(await api.newProblem(sid, false, level, after));
     setScreen("solve");
   });
   const deleteMyData = () => run(async () => {
@@ -82,14 +87,15 @@ export default function App() {
           <Login lang={lang} notice={notice}
             onDone={(id, tok) => { setSid(id); setToken(tok); setNotice(""); setScreen("start"); }} />
         )}
-        {screen === "start" && <Start lang={lang} onPick={pick} onFindError={toFindError} />}
+        {screen === "start" && <Start lang={lang} onPick={pick} onLevel={(lv) => pickLevel(lv)} onFindError={toFindError} />}
         {screen === "find_error" && findTask && (
           <FindError lang={lang} sid={sid} task={findTask} onTask={setFindTask}
             onNext={toFindError} onReport={toReport} />
         )}
         {screen === "solve" && problem && (
           <Solve lang={lang} sid={sid} problem={problem} onProblem={setProblem}
-            onTransfer={toTransfer} onReport={toReport} />
+            onTransfer={toTransfer} onReport={toReport}
+            onNext={problem.level ? () => pickLevel(problem.level!, problem.bank_id) : undefined} />
         )}
         {screen === "report" && (
           <Report lang={lang} sid={sid} onRestart={() => { setProblem(null); setScreen("login"); }}

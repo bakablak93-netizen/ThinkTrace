@@ -23,7 +23,7 @@ import { Solve } from "../Solve";
 
 function problem(steps: ProblemView["steps"], solved = false): ProblemView {
   return { id: "p1", kind: "main", text: "2(x + 3) = 14", latex: "2(x+3)=14", current: "", solved,
-    hints_enabled: true, steps };
+    hints_enabled: true, steps, bank_id: "B1", level: "B" };
 }
 const s = (id: number, text: string, status: "correct" | "error" | "solved") => ({ event_id: id, text, latex: text, status });
 
@@ -81,5 +81,22 @@ describe("Solve -> FX pulses", () => {
     await submit("2x=7");
     expect(screen.getByText(/^Подсказка · 1 из 4$/)).toBeTruthy();
     expect(screen.queryByText(/Подсказка ИИ/)).toBeNull();
+  });
+});
+
+describe("problem bank: next problem", () => {
+  it("shows 'Следующая задача' after a solved bank problem and calls onNext", () => {
+    const onNext = vi.fn();
+    const solved = problem([s(1, "x = 4", "solved")], true);
+    render(<Solve lang="ru" sid="s1" problem={solved} onProblem={() => {}} onTransfer={() => {}} onReport={() => {}} onNext={onNext} />);
+    fireEvent.click(screen.getByRole("button", { name: "Следующая задача" }));
+    expect(onNext).toHaveBeenCalledTimes(1);
+    expect(screen.getByText(/уровень B/)).toBeTruthy();
+  });
+
+  it("no 'Следующая задача' for a generated problem", () => {
+    const gen = { ...problem([s(1, "x = 4", "solved")], true), bank_id: null, level: null };
+    render(<Solve lang="ru" sid="s1" problem={gen} onProblem={() => {}} onTransfer={() => {}} onReport={() => {}} />);
+    expect(screen.queryByRole("button", { name: "Следующая задача" })).toBeNull();
   });
 });
