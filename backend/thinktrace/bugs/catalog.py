@@ -1,8 +1,7 @@
 """Catalog of typical errors (bugs) in solving linear equations.
 
 Each Bug has:
-  id, name / description (ru/kk/en), hints for levels 1-3 (ru/kk/en), focus phrase for
-  level 2, transfer_tag (which problem family checks understanding of this bug), and
+  id, name / description (ru/kk/en), hints for levels 1-3 (ru/kk/en), transfer_tag (which problem family checks understanding of this bug), and
   transforms(prev_eq) -> list[Candidate]: every way this error could be applied to the
   previous step. Each Candidate carries the buggy result AND the correct version of the
   same action (shown only on hint level 4).
@@ -37,7 +36,6 @@ class Bug:
     description: dict[str, str]
     transforms: Callable[[Equation], list[Candidate]]
     hints: dict[int, dict[str, str]]
-    focus: dict[str, str]
     transfer_tag: str
     extra: dict = field(default_factory=dict)
 
@@ -216,7 +214,6 @@ _register(Bug(
             "en": "Rule: k(a + b) = k·a + k·b. The factor in front multiplies every term inside the brackets.",
         },
     },
-    focus={"ru": "раскрытие скобок", "en": "expanding the brackets"},
     transfer_tag="brackets",
 ))
 
@@ -245,7 +242,6 @@ _register(Bug(
             "en": "Rule: a term moved across “=” changes its sign. It is the same as subtracting (or adding) it on both sides.",
         },
     },
-    focus={"ru": "перенос слагаемых", "en": "moving terms across the equals sign"},
     transfer_tag="transfer",
 ))
 
@@ -274,6 +270,5 @@ _register(Bug(
             "en": "Rule: both sides of an equation are divided by the same non-zero number.",
         },
     },
-    focus={"ru": "деление частей уравнения", "en": "dividing the sides of the equation"},
     transfer_tag="divide",
 ))
