@@ -21,7 +21,7 @@ Guidance for working in this repo. Read README.md for the product description.
 ## Commands
 
 - Backend deps: `cd backend && pip install -r requirements.txt`
-- Backend run: `cd backend && uvicorn thinktrace.api:app --reload --port 8000`
+- Backend run: `cd backend && uvicorn thinktrace.api:create_app --factory --reload --port 8000`
 - Tests: `cd backend && pytest -q` (run before claiming anything is done)
 - Frontend: `cd frontend && npm install && npm run dev`
 - Frontend type check + build: `cd frontend && npm run build`

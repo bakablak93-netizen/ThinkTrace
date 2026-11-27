@@ -43,7 +43,7 @@ Backend (Python 3.11+):
 cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-uvicorn thinktrace.api:app --reload --port 8000
+uvicorn thinktrace.api:create_app --factory --reload --port 8000
 ```
 
 Тесты:
