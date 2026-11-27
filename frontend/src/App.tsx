@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, errorMessage, type FindErrorTask, type ProblemView } from "./api";
+import { Logo } from "./components/Logo";
 import { FontSizeControl } from "./components/a11y";
 import { t, type Lang } from "./i18n";
 import { FindError } from "./pages/FindError";
@@ -52,21 +53,31 @@ export default function App() {
     setScreen("report");
   });
 
+  // header tag: "Problem 1 of 2" (main), "2 of 2" (final / transfer), or the mode name
+  const tag = screen === "solve" && problem
+    ? t(lang, "tag.task", { n: problem.kind === "transfer" ? 2 : 1, total: 2 })
+    : screen === "find_error" ? t(lang, "finderr.title") : null;
+
   return (
-    <div className="app">
-      <header>
-        <h1>{t(lang, "app.title")}</h1>
-        <div className="header-tools">
+    <div className="page">
+      <header className="app-header">
+        <p className="brand">
+          <Logo />
+          {t(lang, "app.title")}
+          {tag && <span className="tag">{tag}</span>}
+        </p>
+        <div className="tools">
           <FontSizeControl lang={lang} />
-          <select aria-label={t(lang, "a11y.language")} value={lang} onChange={(e) => setLang(e.target.value as Lang)}>
-            <option value="ru">RU — Русский</option>
-            <option value="kk">KK — Қазақша</option>
-            <option value="en">EN — English</option>
+          <select className="icon" aria-label={t(lang, "a11y.language")} value={lang}
+            onChange={(e) => setLang(e.target.value as Lang)}>
+            <option value="ru">RU</option>
+            <option value="kk">KK</option>
+            <option value="en">EN</option>
           </select>
         </div>
       </header>
-      <main>
-        {error && <p className="error" role="alert">{error}</p>}
+      <main className="stack">
+        {error && <p className="msg error-text" role="alert">{error}</p>}
         {screen === "login" && (
           <Login lang={lang} notice={notice}
             onDone={(id, tok) => { setSid(id); setToken(tok); setNotice(""); setScreen("start"); }} />
@@ -80,14 +91,18 @@ export default function App() {
           <Solve lang={lang} sid={sid} problem={problem} onProblem={setProblem}
             onTransfer={toTransfer} onReport={toReport} />
         )}
-        {screen === "report" && <Report lang={lang} sid={sid} onRestart={() => { setProblem(null); setScreen("login"); }} />}
+        {screen === "report" && (
+          <Report lang={lang} sid={sid} onRestart={() => { setProblem(null); setScreen("login"); }}
+            onDelete={deleteMyData} />
+        )}
       </main>
-      {screen !== "login" && sid && (
-        <footer>
-          <p className="small muted">{t(lang, "delete.explain")}</p>
-          <button type="button" className="danger" onClick={deleteMyData}>{t(lang, "delete.button")}</button>
-        </footer>
+      {screen !== "login" && screen !== "report" && sid && (
+        <section className="row" aria-label={t(lang, "delete.button")}>
+          <button type="button" className="link danger" onClick={deleteMyData}>{t(lang, "delete.button")}</button>
+          <span className="small muted">{t(lang, "delete.explain")}</span>
+        </section>
       )}
+      <p className="foot">{t(lang, "foot.note")}</p>
     </div>
   );
 }
