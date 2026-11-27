@@ -59,6 +59,8 @@ class StartIn(BaseModel):
 
 class ProblemIn(BaseModel):
     demo: bool = False
+    level: Literal["A", "B", "C"] | None = None   # problem bank level
+    after: str | None = Field(default=None, max_length=8)   # bank id of the previous problem
 
 
 class StepIn(BaseModel):
@@ -140,7 +142,7 @@ def create_app(db_path: str | None = None, static_dir: str | None = None,
 
     @app.post("/api/sessions/{sid}/problems")
     def new_problem(sid: str, body: ProblemIn, conn=Depends(get_conn)):
-        return tutor.new_problem(conn, sid, demo=body.demo)
+        return tutor.new_problem(conn, sid, demo=body.demo, level=body.level, after=body.after)
 
     @app.get("/api/sessions/{sid}/problems/{pid}")
     def get_problem(sid: str, pid: str, conn=Depends(get_conn)):

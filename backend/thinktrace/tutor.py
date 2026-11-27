@@ -36,7 +36,8 @@ from .hints import Hint, error_hint, next_level, stuck_hint
 from .llm import FeedbackRequest, HintRequest, HintResult, LLMClient, TemplateClient
 from .i18n import LANGS, pick, tr
 from .parser import ParseError, parse_equation
-from .problems import Problem, demo_problem, main_problem, transfer_problem
+from .bank import BANK, LEVELS
+from .problems import BANK_PREFIX, Problem, bank_problem, bank_twin, demo_problem, main_problem, transfer_problem
 from .verifier import equivalent, is_solved, unique_root
 
 MODES = ("smart_tutor",)
@@ -132,9 +133,17 @@ def _get_problem(conn, sid: str, pid: str) -> sqlite3.Row:
     return row
 
 
-def new_problem(conn, sid: str, demo: bool = False, seed: int | None = None) -> dict:
+def new_problem(conn, sid: str, demo: bool = False, seed: int | None = None,
+                level: str | None = None, after: str | None = None) -> dict:
+    """demo -> the default problem; level A/B/C -> next bank problem of that level after
+    bank id `after` (cyclic); otherwise a generated problem."""
     get_session(conn, sid)
-    p = demo_problem() if demo else main_problem(random.Random(seed))
+    if level is not None:
+        if level not in LEVELS or (after is not None and after not in BANK):
+            raise TutorError("bad_level")
+        p = bank_problem(level, after)  # type: ignore[arg-type]
+    else:
+        p = demo_problem() if demo else main_problem(random.Random(seed))
     pid = _insert_problem(conn, sid, p, "main", None)
     return problem_view(conn, sid, pid)
 
@@ -168,7 +177,8 @@ def new_transfer(conn, sid: str, seed: int | None = None) -> dict:
         top = max(counts.values())
         bug_id = next(b for b in reversed(bugs) if counts[b] == top)
     original = Problem(solved["text"], solved["form"], solved["root"])
-    p = transfer_problem(bug_id, original, random.Random(seed))
+    # a bank problem has a twin with the same structure: that is the final problem
+    p = bank_twin(original.bank_id) if original.bank_id else transfer_problem(bug_id, original, random.Random(seed))
     pid = _insert_problem(conn, sid, p, "transfer", bug_id)
     return problem_view(conn, sid, pid)
 
@@ -223,10 +233,13 @@ def problem_view(conn, sid: str, pid: str) -> dict:
         eq = parse_equation(e["payload"]["text"])
         steps.append({"event_id": e["id"], "text": eq_text(eq), "latex": eq_latex(eq),
                       "status": e["payload"]["status"]})
+    bank_id = p["form"][len(BANK_PREFIX):] if p["form"].startswith(BANK_PREFIX) else None
     return {
         "id": p["id"], "kind": p["kind"], "text": eq_text(st.original), "latex": eq_latex(st.original),
         "current": eq_text(st.current), "solved": st.solved, "hints_enabled": p["kind"] == "main",
         "steps": steps,
+        # added data: bank problem id and level (None for generated problems)
+        "bank_id": bank_id, "level": BANK[bank_id].level if bank_id in BANK else None,
     }
 
 
