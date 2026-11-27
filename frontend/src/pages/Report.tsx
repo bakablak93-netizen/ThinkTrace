@@ -86,6 +86,7 @@ export function Report({ lang, sid, onRestart }: { lang: Lang; sid: string; onRe
               {e.text && <span className="mono"> {e.text}</span>}
               {e.status && <span className={`chip ${e.status}`}>{t(lang, `status.${e.status}`)}</span>}
               {e.auto && <span className="small muted"> ({t(lang, "report.auto")})</span>}
+              {e.source && <span className={`source ${e.source}`}>{t(lang, `hint.source_${e.source}`)}</span>}
             </li>
           ))}
         </ol>

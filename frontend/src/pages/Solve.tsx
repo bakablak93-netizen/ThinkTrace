@@ -152,7 +152,12 @@ export function Solve({ lang, sid, problem, onProblem, onTransfer, onReport }: P
         <section className="card hints" aria-live="polite">
           {hints.map((h, i) => (
             <div key={i} className="hint">
-              <div className="label">{t(lang, "solve.hint_level", { level: h.level })}</div>
+              <div className="hint-head">
+                <span className="label">{t(lang, "solve.hint_level", { level: h.level })}</span>
+                <span className={`source ${h.source}`} title={t(lang, `hint.source_${h.source}_title`)}>
+                  {t(lang, `hint.source_${h.source}`)}
+                </span>
+              </div>
               <p>{h.text}</p>
             </div>
           ))}

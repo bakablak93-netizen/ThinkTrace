@@ -35,9 +35,12 @@ export interface Diagnosis {
   candidates: Candidate[];
 }
 
+export type HintSource = "llm" | "template";
+
 export interface HintView {
   level: number;
   text: string;
+  source: HintSource;
 }
 
 export interface StepResult {
@@ -75,7 +78,7 @@ export interface ReportProblem {
   solved: boolean;
   duration_sec: number;
   steps: ReportStep[];
-  hints: { t: number; level: number; kind: string; auto: boolean }[];
+  hints: { t: number; level: number; kind: string; auto: boolean; source: HintSource }[];
   errors_by_bug: Record<string, number>;
 }
 
@@ -87,6 +90,7 @@ export interface TimelineItem {
   status?: string;
   level?: number;
   auto?: boolean;
+  source?: HintSource;
 }
 
 export interface Report {

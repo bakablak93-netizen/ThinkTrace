@@ -29,6 +29,11 @@ const ru: Dict = {
   "solve.to_report": "Завершить и открыть отчёт",
   "solve.choose_confidence": "Сначала выбери уверенность",
 
+  "hint.source_llm": "подсказка ИИ",
+  "hint.source_template": "шаблонная подсказка",
+  "hint.source_llm_title": "Текст сформулировала языковая модель. Ошибку определила не она, а проверка шагов.",
+  "hint.source_template_title": "Заранее подготовленный текст подсказки.",
+
   "conf.low": "Низкая",
   "conf.medium": "Средняя",
   "conf.high": "Высокая",

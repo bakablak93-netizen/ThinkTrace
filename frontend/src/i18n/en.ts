@@ -29,6 +29,11 @@ const en: Dict = {
   "solve.to_report": "Finish and see the report",
   "solve.choose_confidence": "Choose your confidence first",
 
+  "hint.source_llm": "AI hint",
+  "hint.source_template": "template hint",
+  "hint.source_llm_title": "Worded by a language model. The error itself was detected by the step checker, not by the model.",
+  "hint.source_template_title": "A prepared hint text.",
+
   "conf.low": "Low",
   "conf.medium": "Medium",
   "conf.high": "High",
