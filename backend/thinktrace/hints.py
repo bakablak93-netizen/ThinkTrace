@@ -114,7 +114,9 @@ def error_hint(diag: Diagnosis, level: int, prev: Equation, step_text: str, lang
         else:
             text = tr("hint.general.3", lang)
     else:
-        if bug:
+        if bug and 4 in bug.hints:
+            text = pick(bug.hints[4], lang).format(prev=prev_text, correct=eq_text(diag.matches[0].correct))
+        elif bug:
             text = tr("hint.level4", lang, rule=pick(bug.hints[3], lang), prev=prev_text,
                       correct=eq_text(diag.matches[0].correct))
         else:
@@ -127,8 +129,13 @@ def error_hint(diag: Diagnosis, level: int, prev: Equation, step_text: str, lang
 # ---------- guard: never reveal the final answer (applied to every LLM text) ----------
 
 _NUM = re.compile(r"(?<![\w.,])-?\d+(?:[.,]\d+)?(?:\s*/\s*\d+)?")
-_X_EQ = re.compile(r"[xх]\s*=\s*(-?\d+(?:[.,]\d+)?(?:\s*/\s*\d+)?)|(-?\d+(?:[.,]\d+)?(?:\s*/\s*\d+)?)\s*=\s*[xх](?![\w])",
-                   re.IGNORECASE)
+# "x = <number>" / "<number> = x" with x standing alone: not "-3x = 2 + 8" (x after a
+# coefficient) and not "x = 2 + 8" (the number continues an expression).
+_NUMBER = r"-?\d+(?:[.,]\d+)?(?:\s*/\s*\d+)?"
+_X_EQ = re.compile(
+    rf"(?<![\w)])[xх]\s*=\s*({_NUMBER})(?!\s*[-+*/×·:]\s*[\dxх(])(?![\d.,]*\d)"
+    rf"|(?<![-+*/×·:\w)]\s)(?<![-+*/×·:\w)])({_NUMBER})\s*=\s*[xх](?![\w(])",
+    re.IGNORECASE)
 
 
 def _to_fraction(s: str) -> Fraction | None:
