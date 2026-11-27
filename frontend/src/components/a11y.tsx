@@ -8,10 +8,17 @@ export function StatusChip({ lang, status }: { lang: Lang; status: string }) {
   return <span className={`badge ${BADGE[status] ?? "ok"}`}>{t(lang, `status.${status}`)}</span>;
 }
 
+// The very first screen after page load keeps the browser's natural focus (start of the page);
+// moving focus there would only draw a focus ring around the heading on load.
+let pageJustLoaded = true;
+
 /** Heading that receives focus when a screen opens (keyboard and screen-reader users land on it). */
 export function useFocusOnMount<T extends HTMLElement>(dep?: unknown) {
   const ref = useRef<T>(null);
-  useEffect(() => { ref.current?.focus(); }, [dep]);
+  useEffect(() => {
+    if (pageJustLoaded) { pageJustLoaded = false; return; }
+    ref.current?.focus();
+  }, [dep]);
   return ref;
 }
 

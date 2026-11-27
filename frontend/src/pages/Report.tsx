@@ -104,7 +104,7 @@ export function Report({ lang, sid, onRestart, onDelete }: {
         <p className="ask" style={{ margin: 0 }}>{data.summary}</p>
       </section>
 
-      <ul className="stats list-plain" aria-label={t(lang, "report.title")}>
+      <ul className="stats" aria-label={t(lang, "report.title")}>
         {stats.map(([k, v]) => (
           <li key={k} className="stat"><b>{v}</b><span>{t(lang, k)}</span></li>
         ))}

@@ -116,7 +116,7 @@ h2[tabindex="-1"]:focus:not(:focus-visible), h1[tabindex="-1"]:focus:not(:focus-
 @media (max-width: 599px) { .symbols { display: grid; } }
 
 /* ---------- report ---------- */
-.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; list-style: none; padding: 0; margin: 0; }
 @media (max-width: 599px) { .stats { grid-template-columns: repeat(2, 1fr); } }
 .stat { background: rgba(31, 44, 99, .92); border-radius: 1rem; padding: 1rem; }
 .stat b { display: block; font-family: var(--mono); font-size: 2rem; line-height: 1.1; }
