@@ -114,10 +114,12 @@ export function errorMessage(lang: Lang, err: unknown): string {
   return t(lang, "err.generic", { code: err.code });
 }
 
-async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
+async function call<T>(method: string, path: string, body?: unknown, extraHeaders?: Record<string, string>): Promise<T> {
+  const headers: Record<string, string> = { ...extraHeaders };
+  if (body !== undefined) headers["Content-Type"] = "application/json";
   const res = await fetch(`/api${path}`, {
     method,
-    headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
+    headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   const data = await res.json().catch(() => ({}));
@@ -127,7 +129,7 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
 
 export const api = {
   start: (nickname: string, lang: Lang) =>
-    call<{ session_id: string }>("POST", "/sessions", { nickname, lang }),
+    call<{ session_id: string; token: string }>("POST", "/sessions", { nickname, lang }),
   newProblem: (sid: string, demo: boolean) =>
     call<ProblemView>("POST", `/sessions/${sid}/problems`, { demo }),
   transfer: (sid: string) => call<ProblemView>("POST", `/sessions/${sid}/transfer`),
@@ -139,5 +141,7 @@ export const api = {
   disagree: (sid: string, eventId: number) =>
     call<{ ok: boolean }>("POST", `/sessions/${sid}/disagree`, { event_id: eventId }),
   finish: (sid: string) => call<{ ok: boolean }>("POST", `/sessions/${sid}/finish`),
+  deleteMyData: (sid: string, token: string) =>
+    call<{ ok: boolean }>("DELETE", `/sessions/${sid}`, undefined, { "X-Session-Token": token }),
   report: (sid: string, lang: Lang) => call<Report>("GET", `/sessions/${sid}/report?lang=${lang}`),
 };

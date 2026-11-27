@@ -11,8 +11,9 @@ Stage 1 endpoints (all under /api):
   POST /sessions/{sid}/finish                     finish session
   GET  /sessions/{sid}/report                     report
   POST /parse                                     live preview {text} -> latex / error
+  DELETE /sessions/{sid}                          delete my data (header X-Session-Token)
   GET  /health                                    liveness check (outside /api)
-Stage 2: delete my data, modes independent / exam, teacher view.
+Stage 2: modes independent / exam, teacher view.
 
 If the built frontend exists (frontend/dist, or STATIC_DIR), it is served at "/" by the
 same app: one service, one URL. Local development with Vite keeps working unchanged.
@@ -29,7 +30,7 @@ from pathlib import Path
 from typing import Iterator, Literal
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -154,6 +155,11 @@ def create_app(db_path: str | None = None, static_dir: str | None = None,
     @app.post("/api/sessions/{sid}/finish")
     def finish(sid: str, conn=Depends(get_conn)):
         tutor.finish(conn, sid)
+        return {"ok": True}
+
+    @app.delete("/api/sessions/{sid}")
+    def delete_my_data(sid: str, x_session_token: str | None = Header(default=None), conn=Depends(get_conn)):
+        tutor.delete_session_data(conn, sid, x_session_token)
         return {"ok": True}
 
     @app.get("/api/sessions/{sid}/report")

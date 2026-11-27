@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS sessions (
     mode TEXT NOT NULL,
     lang TEXT NOT NULL,
     created_at REAL NOT NULL,
-    finished_at REAL
+    finished_at REAL,
+    token_hash TEXT                -- sha256 of the deletion token; the token itself is not stored
 );
 CREATE TABLE IF NOT EXISTS problems (
     id TEXT PRIMARY KEY,
@@ -54,3 +55,6 @@ def connect(path: str) -> sqlite3.Connection:
 def init(path: str) -> None:
     with connect(path) as conn:
         conn.executescript(SCHEMA)
+        cols = {r["name"] for r in conn.execute("PRAGMA table_info(sessions)")}
+        if "token_hash" not in cols:  # databases created before the delete feature
+            conn.execute("ALTER TABLE sessions ADD COLUMN token_hash TEXT")

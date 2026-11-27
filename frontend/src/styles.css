@@ -13,13 +13,14 @@
   --hint-bg: #fff7e0;
   --hint-border: #f0d68a;
   --focus: #1a47b8;
+  --notice-bg: #e8effc;
 }
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #14171c; --card: #1d2229; --text: #e6e9ee; --muted: #9aa4b2; --border: #313842;
     --accent: #6f95f0; --accent-text: #0d1117; --ok: #6fd39c; --ok-bg: #173226; --bad: #ff8a80;
     --bad-bg: #3a1d1b; --hint-bg: #2e2915; --hint-border: #6b5a22;
-    --focus: #9db8ff;
+    --focus: #9db8ff; --notice-bg: #1c2a44;
   }
 }
 * { box-sizing: border-box; }
@@ -99,3 +100,6 @@ td:nth-child(3) { white-space: normal; min-width: 140px; }
 .source { font-size: .75rem; border-radius: 999px; padding: 1px 8px; margin-left: 6px; border: 1px solid var(--border);
   color: var(--muted); white-space: nowrap; }
 .source.llm { border-color: var(--accent); color: var(--accent); }
+footer { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
+button.danger { color: var(--bad); border-color: var(--bad); }
+.notice { background: var(--notice-bg, transparent); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; }

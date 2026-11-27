@@ -15,8 +15,11 @@ stay deterministic templates. Every hint event records its source: llm | templat
 """
 from __future__ import annotations
 
+import hashlib
+import hmac
 import random
 import re
+import secrets
 import sqlite3
 import time
 import uuid
@@ -64,11 +67,32 @@ def create_session(conn: sqlite3.Connection, nickname: str, lang: str = "ru",
     if not row:
         conn.execute("INSERT INTO users (id, nickname, created_at) VALUES (?, ?, ?)", (user_id, nickname, now))
     sid = uuid.uuid4().hex
-    conn.execute("INSERT INTO sessions (id, user_id, mode, lang, created_at) VALUES (?, ?, ?, ?, ?)",
-                 (sid, user_id, mode, lang, now))
+    token = secrets.token_urlsafe(32)
+    conn.execute("INSERT INTO sessions (id, user_id, mode, lang, created_at, token_hash) VALUES (?, ?, ?, ?, ?, ?)",
+                 (sid, user_id, mode, lang, now, _hash(token)))
     conn.commit()
     log_event(conn, sid, "session_started", {"mode": mode, "lang": lang})
-    return {"session_id": sid, "nickname": nickname, "mode": mode, "lang": lang}
+    # the token is returned once and only its hash is stored
+    return {"session_id": sid, "token": token, "nickname": nickname, "mode": mode, "lang": lang}
+
+
+def _hash(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def delete_session_data(conn: sqlite3.Connection, sid: str, token: str | None) -> None:
+    """Delete this session with all its problems and events (FK cascade). Requires the
+    session's own token. The nickname row is removed too if no other session uses it;
+    other sessions with the same nickname may belong to other people and are kept."""
+    row = conn.execute("SELECT user_id, token_hash FROM sessions WHERE id = ?", (sid,)).fetchone()
+    if not row:
+        raise TutorError("session_not_found", 404)
+    if not token or not row["token_hash"] or not hmac.compare_digest(_hash(token), row["token_hash"]):
+        raise TutorError("forbidden", 403)
+    conn.execute("DELETE FROM sessions WHERE id = ?", (sid,))
+    conn.execute("DELETE FROM users WHERE id = ? AND NOT EXISTS (SELECT 1 FROM sessions WHERE user_id = ?)",
+                 (row["user_id"], row["user_id"]))
+    conn.commit()
 
 
 def get_session(conn: sqlite3.Connection, sid: str) -> sqlite3.Row:

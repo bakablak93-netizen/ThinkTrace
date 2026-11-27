@@ -13,6 +13,8 @@ export default function App() {
   const [lang, setLang] = useState<Lang>("ru");
   const [screen, setScreen] = useState<Screen>("login");
   const [sid, setSid] = useState("");
+  const [token, setToken] = useState("");   // kept only in memory, needed to delete my data
+  const [notice, setNotice] = useState("");
   const [problem, setProblem] = useState<ProblemView | null>(null);
   const [error, setError] = useState("");
 
@@ -30,6 +32,13 @@ export default function App() {
   const pick = (demo: boolean) => run(async () => {
     setProblem(await api.newProblem(sid, demo));
     setScreen("solve");
+  });
+  const deleteMyData = () => run(async () => {
+    if (!window.confirm(t(lang, "delete.confirm"))) return;
+    await api.deleteMyData(sid, token);
+    setSid(""); setToken(""); setProblem(null);
+    setNotice(t(lang, "delete.done"));
+    setScreen("login");
   });
   const toTransfer = () => run(async () => setProblem(await api.transfer(sid)));
   const toReport = () => run(async () => {
@@ -52,7 +61,10 @@ export default function App() {
       </header>
       <main>
         {error && <p className="error" role="alert">{error}</p>}
-        {screen === "login" && <Login lang={lang} onDone={(id) => { setSid(id); setScreen("start"); }} />}
+        {screen === "login" && (
+          <Login lang={lang} notice={notice}
+            onDone={(id, tok) => { setSid(id); setToken(tok); setNotice(""); setScreen("start"); }} />
+        )}
         {screen === "start" && <Start lang={lang} onPick={pick} />}
         {screen === "solve" && problem && (
           <Solve lang={lang} sid={sid} problem={problem} onProblem={setProblem}
@@ -60,6 +72,12 @@ export default function App() {
         )}
         {screen === "report" && <Report lang={lang} sid={sid} onRestart={() => { setProblem(null); setScreen("login"); }} />}
       </main>
+      {screen !== "login" && sid && (
+        <footer>
+          <p className="small muted">{t(lang, "delete.explain")}</p>
+          <button type="button" className="danger" onClick={deleteMyData}>{t(lang, "delete.button")}</button>
+        </footer>
+      )}
     </div>
   );
 }
