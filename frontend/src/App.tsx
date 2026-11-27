@@ -61,11 +61,11 @@ export default function App() {
   return (
     <div className="page">
       <header className="app-header">
-        <p className="brand">
+        <h1 className="brand">
           <Logo />
           {t(lang, "app.title")}
           {tag && <span className="tag">{tag}</span>}
-        </p>
+        </h1>
         <div className="tools">
           <FontSizeControl lang={lang} />
           <select className="icon" aria-label={t(lang, "a11y.language")} value={lang}
@@ -102,7 +102,7 @@ export default function App() {
           <span className="small muted">{t(lang, "delete.explain")}</span>
         </section>
       )}
-      <p className="foot">{t(lang, "foot.note")}</p>
+      <footer><p className="foot">{t(lang, "foot.note")}</p></footer>
     </div>
   );
 }

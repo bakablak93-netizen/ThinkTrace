@@ -38,7 +38,9 @@ const BG_FS =
   "c+=vec3(.05,.09,.22)*(.5+.5*w/3.)*.7;" +
   "float d=distance(uv*vec2(asp,1.),m*vec2(asp,1.));" +
   "c+=vec3(.20,.42,1.)*exp(-d*3.4)*.11;" +
-  "c+=tint*k*exp(-distance(uv*vec2(asp,1.),vec2(.5*asp,.45))*1.6)*.35;" +
+  // tint strength .07 (prototype: .35): keeps text drawn directly over the canvas at >= 4.5:1
+  // even at the peak of a "solved" wave (worst case computed in the design PR)
+  "c+=tint*k*exp(-distance(uv*vec2(asp,1.),vec2(.5*asp,.45))*1.6)*.07;" +
   "gl_FragColor=vec4(c,1.);}";
 const PT_VS =
   "attribute vec2 p;attribute float s;attribute vec4 c;uniform vec2 r;uniform float dpr;varying vec4 vc;" +

@@ -17,7 +17,7 @@
   --on-action: #0C1230; /* text on amber */
   --focus: #BFE9FF;     /* focus outline */
   --err-text: #FF93A8;  /* coral text on tinted badge background */
-  --placeholder: #8592C6;
+  --placeholder: #6F7DB5;  /* 4.61:1 on --field */
 
   --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   /* Inter right after JetBrains Mono: the mono font has no Kazakh-specific letters
