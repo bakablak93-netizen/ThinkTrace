@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api, errorMessage, type ProblemView } from "./api";
+import { FontSizeControl } from "./components/a11y";
 import { t, type Lang } from "./i18n";
 import { Login } from "./pages/Login";
 import { Report } from "./pages/Report";
@@ -14,6 +15,8 @@ export default function App() {
   const [sid, setSid] = useState("");
   const [problem, setProblem] = useState<ProblemView | null>(null);
   const [error, setError] = useState("");
+
+  useEffect(() => { document.documentElement.lang = lang; }, [lang]);
 
   async function run(fn: () => Promise<void>) {
     setError("");
@@ -38,14 +41,17 @@ export default function App() {
     <div className="app">
       <header>
         <h1>{t(lang, "app.title")}</h1>
-        <select aria-label="Language" value={lang} onChange={(e) => setLang(e.target.value as Lang)}>
-          <option value="ru">RU</option>
-          <option value="kk">KK</option>
-          <option value="en">EN</option>
-        </select>
+        <div className="header-tools">
+          <FontSizeControl lang={lang} />
+          <select aria-label={t(lang, "a11y.language")} value={lang} onChange={(e) => setLang(e.target.value as Lang)}>
+            <option value="ru">RU — Русский</option>
+            <option value="kk">KK — Қазақша</option>
+            <option value="en">EN — English</option>
+          </select>
+        </div>
       </header>
       <main>
-        {error && <p className="error">{error}</p>}
+        {error && <p className="error" role="alert">{error}</p>}
         {screen === "login" && <Login lang={lang} onDone={(id) => { setSid(id); setScreen("start"); }} />}
         {screen === "start" && <Start lang={lang} onPick={pick} />}
         {screen === "solve" && problem && (

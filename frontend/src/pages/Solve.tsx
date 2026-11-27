@@ -3,6 +3,7 @@ import {
   api, errorMessage, type Confidence, type Diagnosis, type HintView, type ParseResult, type ProblemView,
 } from "../api";
 import { Formula } from "../components/Formula";
+import { StatusChip, useFocusOnMount } from "../components/a11y";
 import { t, type Lang } from "../i18n";
 
 interface Props {
@@ -31,11 +32,15 @@ export function Solve({ lang, sid, problem, onProblem, onTransfer, onReport }: P
   const [disagreed, setDisagreed] = useState<Record<number, boolean>>({});
   const [hints, setHints] = useState<HintView[]>([]);
   const [busy, setBusy] = useState(false);
+  // text for screen readers: result of the last check (polite live region)
+  const [announce, setAnnounce] = useState("");
+  const heading = useFocusOnMount<HTMLHeadingElement>(problem.id);
+  const solvedHeading = useFocusOnMount<HTMLHeadingElement>(problem.solved);
 
   // reset per problem
   useEffect(() => {
     setText(""); setPreview(null); setConfidence(null); setMessage("");
-    setDiagnoses({}); setDisagreed({}); setHints([]);
+    setDiagnoses({}); setDisagreed({}); setHints([]); setAnnounce("");
   }, [problem.id]);
 
   // live preview (debounced)
@@ -62,6 +67,7 @@ export function Solve({ lang, sid, problem, onProblem, onTransfer, onReport }: P
         setMessage(r.message ?? "");
         return;
       }
+      setAnnounce(describe(r.status, text, r.diagnosis));
       if (r.status === "error" && r.event_id !== undefined && r.diagnosis) {
         setDiagnoses((d) => ({ ...d, [r.event_id!]: r.diagnosis! }));
       }
@@ -76,6 +82,13 @@ export function Solve({ lang, sid, problem, onProblem, onTransfer, onReport }: P
     } finally {
       setBusy(false);
     }
+  }
+
+  function describe(status: string, stepText: string, d?: Diagnosis): string {
+    let s = `${t(lang, "solve.input")}: ${stepText} — ${t(lang, `status.${status}`)}.`;
+    if (d && !d.unknown) s += ` ${t(lang, d.ambiguous ? "diag.several" : "diag.possible")} ${d.candidates.map((c) => c.name).join("; ")}.`;
+    if (d?.unknown) s += ` ${t(lang, "diag.unknown")}`;
+    return s;
   }
 
   async function askHint() {
@@ -104,22 +117,22 @@ export function Solve({ lang, sid, problem, onProblem, onTransfer, onReport }: P
   return (
     <div className="stack">
       <section className="card">
-        <div className="label">{t(lang, "solve.problem")}</div>
+        <h2 className="label" ref={heading} tabIndex={-1}>{t(lang, "solve.problem")}</h2>
         {isTransfer && <div className="badge">{t(lang, "solve.transfer_badge")}</div>}
         <div className="problem"><Formula latex={problem.latex} display /></div>
       </section>
 
       <section className="card">
-        <div className="label">{t(lang, "solve.steps")}</div>
+        <h2 className="label" id="steps-title">{t(lang, "solve.steps")}</h2>
         {problem.steps.length === 0 && <p className="muted">{t(lang, "solve.no_steps")}</p>}
-        <ol className="steps">
+        <ol className="steps" aria-labelledby="steps-title">
           {problem.steps.map((s) => {
             const d = diagnoses[s.event_id];
             return (
               <li key={s.event_id} className={`step ${s.status}`}>
                 <div className="step-row">
                   <Formula latex={s.latex} />
-                  <span className={`chip ${s.status}`}>{t(lang, `status.${s.status}`)}</span>
+                  <StatusChip lang={lang} status={s.status} />
                 </div>
                 {s.status === "error" && isTransfer && <p className="small muted">{t(lang, "diag.transfer_hidden")}</p>}
                 {s.status === "error" && d && (
@@ -139,7 +152,8 @@ export function Solve({ lang, sid, problem, onProblem, onTransfer, onReport }: P
                     <p className="small muted">{t(lang, "diag.note")}</p>
                     {disagreed[s.event_id]
                       ? <p className="small">{t(lang, "diag.disagreed")}</p>
-                      : <button className="link" onClick={() => disagree(s.event_id)}>{t(lang, "diag.disagree")}</button>}
+                      : <button className="link" onClick={() => disagree(s.event_id)}
+                          aria-label={`${t(lang, "diag.disagree")}: ${s.text}`}>{t(lang, "diag.disagree")}</button>}
                   </div>
                 )}
               </li>
@@ -148,8 +162,11 @@ export function Solve({ lang, sid, problem, onProblem, onTransfer, onReport }: P
         </ol>
       </section>
 
+      <p className="sr-only" aria-live="polite">{announce}</p>
+      {/* the live region stays mounted so that new hints are announced */}
+      <div aria-live="polite" aria-relevant="additions text">
       {hints.length > 0 && (
-        <section className="card hints" aria-live="polite">
+        <section className="card hints" aria-label={t(lang, "solve.hint")}>
           {hints.map((h, i) => (
             <div key={i} className="hint">
               <div className="hint-head">
@@ -163,10 +180,11 @@ export function Solve({ lang, sid, problem, onProblem, onTransfer, onReport }: P
           ))}
         </section>
       )}
+      </div>
 
       {problem.solved ? (
         <section className="card done">
-          <h2>{t(lang, "solve.solved")}</h2>
+          <h2 ref={solvedHeading} tabIndex={-1}>{t(lang, "solve.solved")}</h2>
           <div className="row">
             {!isTransfer && <button className="primary" onClick={onTransfer}>{t(lang, "solve.to_transfer")}</button>}
             <button className={isTransfer ? "primary" : ""} onClick={onReport}>{t(lang, "solve.to_report")}</button>
@@ -196,7 +214,7 @@ export function Solve({ lang, sid, problem, onProblem, onTransfer, onReport }: P
             ))}
           </fieldset>
 
-          {message && <p className="error">{message}</p>}
+          {message && <p className="error" role="alert">{message}</p>}
           <div className="row">
             <button className="primary" disabled={busy || !confidence || !text.trim()}
               title={!confidence ? t(lang, "solve.choose_confidence") : undefined}>

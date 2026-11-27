@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, errorMessage, type Report as ReportData, type ReportProblem } from "../api";
+import { StatusChip, useFocusOnMount } from "../components/a11y";
 import { t, type Lang } from "../i18n";
 
 function mmss(sec: number) {
@@ -12,24 +13,25 @@ function ProblemBlock({ lang, p }: { lang: Lang; p: ReportProblem }) {
     <section className="card">
       <div className="label">{t(lang, p.kind === "main" ? "report.main" : "report.transfer")}</div>
       <h3 className="mono">{p.text}{!p.solved && <span className="chip error">{t(lang, "report.unsolved")}</span>}</h3>
-      <div className="table-wrap">
+      <div className="table-wrap" tabIndex={0} role="region"
+        aria-label={`${t(lang, p.kind === "main" ? "report.main" : "report.transfer")}: ${t(lang, "report.step")}`}>
         <table>
           <thead>
             <tr>
-              <th>{t(lang, "report.step")}</th>
-              <th>{t(lang, "report.result")}</th>
-              <th>{t(lang, "report.error_type")}</th>
-              <th>{t(lang, "report.self_conf")}</th>
+              <th scope="col">{t(lang, "report.step")}</th>
+              <th scope="col">{t(lang, "report.result")}</th>
+              <th scope="col">{t(lang, "report.error_type")}</th>
+              <th scope="col">{t(lang, "report.self_conf")}</th>
             </tr>
           </thead>
           <tbody>
             {p.steps.map((s) => (
               <tr key={s.event_id}>
                 <td className="mono">{s.text}</td>
-                <td><span className={`chip ${s.status}`}>{t(lang, `status.${s.status}`)}</span></td>
+                <td><StatusChip lang={lang} status={s.status} /></td>
                 <td>
                   {s.status === "error" && (s.unknown ? "—" : s.bugs.map((b) => b.name).join(" / "))}
-                  {s.disagreed && " ⚑"}
+                  {s.disagreed && <span> ⚑ <span className="sr-only">{t(lang, "report.disagreed")}</span></span>}
                 </td>
                 <td>{t(lang, `conf.${s.self_confidence}`)}</td>
               </tr>
@@ -50,19 +52,20 @@ function ProblemBlock({ lang, p }: { lang: Lang; p: ReportProblem }) {
 export function Report({ lang, sid, onRestart }: { lang: Lang; sid: string; onRestart: () => void }) {
   const [data, setData] = useState<ReportData | null>(null);
   const [error, setError] = useState("");
+  const heading = useFocusOnMount<HTMLHeadingElement>(data !== null);
 
   useEffect(() => {
     api.report(sid, lang).then(setData).catch((err) => setError(errorMessage(lang, err)));
   }, [sid, lang]);
 
-  if (error) return <p className="error">{error}</p>;
+  if (error) return <p className="error" role="alert">{error}</p>;
   if (!data) return null;
   const tot = data.totals;
 
   return (
     <div className="stack">
       <section className="card">
-        <h2>{t(lang, "report.title")}</h2>
+        <h2 ref={heading} tabIndex={-1}>{t(lang, "report.title")}</h2>
         <p>{data.summary}</p>
         <p>{data.transfer.text}</p>
         <div className="tiles">
@@ -84,7 +87,7 @@ export function Report({ lang, sid, onRestart }: { lang: Lang; sid: string; onRe
               <span className="mono small muted">{mmss(e.t)}</span>{" "}
               {t(lang, `tl.${e.type}`, { level: e.level ?? "" })}
               {e.text && <span className="mono"> {e.text}</span>}
-              {e.status && <span className={`chip ${e.status}`}>{t(lang, `status.${e.status}`)}</span>}
+              {e.status && <StatusChip lang={lang} status={e.status} />}
               {e.auto && <span className="small muted"> ({t(lang, "report.auto")})</span>}
               {e.source && <span className={`source ${e.source}`}>{t(lang, `hint.source_${e.source}`)}</span>}
             </li>

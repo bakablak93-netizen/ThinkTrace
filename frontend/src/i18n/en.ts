@@ -4,6 +4,12 @@ const en: Dict = {
   "app.title": "ThinkTrace AI",
   "app.tagline": "Solve the equation step by step — every step is checked and you get hints, never the answer.",
 
+  "login.title": "Sign in",
+  "a11y.font_size": "Font size",
+  "a11y.font_smaller": "Decrease font size",
+  "a11y.font_larger": "Increase font size",
+  "a11y.language": "Interface language",
+  "report.disagreed": "assessment disputed",
   "login.nick": "Your nickname",
   "login.nick_hint": "Nickname only: no name or email. 2–24 characters: letters, digits, _ and -.",
   "login.go": "Enter",

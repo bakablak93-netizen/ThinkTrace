@@ -4,6 +4,12 @@ const ru: Dict = {
   "app.title": "ThinkTrace AI",
   "app.tagline": "Решай уравнение по шагам — система проверит каждый шаг и подскажет, не выдавая ответ.",
 
+  "login.title": "Вход",
+  "a11y.font_size": "Размер шрифта",
+  "a11y.font_smaller": "Уменьшить шрифт",
+  "a11y.font_larger": "Увеличить шрифт",
+  "a11y.language": "Язык интерфейса",
+  "report.disagreed": "оценка оспорена",
   "login.nick": "Ваш ник",
   "login.nick_hint": "Только ник: без имени и почты. 2–24 символа: буквы, цифры, _ и -.",
   "login.go": "Войти",
