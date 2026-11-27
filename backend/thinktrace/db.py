@@ -19,18 +19,20 @@ CREATE TABLE IF NOT EXISTS sessions (
     mode TEXT NOT NULL,
     lang TEXT NOT NULL,
     created_at REAL NOT NULL,
-    finished_at REAL
+    finished_at REAL,
+    token_hash TEXT                -- sha256 of the deletion token; the token itself is not stored
 );
 CREATE TABLE IF NOT EXISTS problems (
     id TEXT PRIMARY KEY,
     session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-    kind TEXT NOT NULL,            -- 'main' | 'transfer'
+    kind TEXT NOT NULL,            -- 'main' | 'transfer' | 'find_error'
     text TEXT NOT NULL,
     form TEXT NOT NULL,
     root INTEGER NOT NULL,
     source_bug_id TEXT,            -- for transfer problems
     created_at REAL NOT NULL,
-    solved_at REAL
+    solved_at REAL,
+    data TEXT                      -- JSON for 'find_error': steps, error index, bug, options
 );
 CREATE TABLE IF NOT EXISTS events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -54,3 +56,9 @@ def connect(path: str) -> sqlite3.Connection:
 def init(path: str) -> None:
     with connect(path) as conn:
         conn.executescript(SCHEMA)
+        cols = {r["name"] for r in conn.execute("PRAGMA table_info(sessions)")}
+        if "token_hash" not in cols:  # databases created before the delete feature
+            conn.execute("ALTER TABLE sessions ADD COLUMN token_hash TEXT")
+        pcols = {r["name"] for r in conn.execute("PRAGMA table_info(problems)")}
+        if "data" not in pcols:       # databases created before "find the error"
+            conn.execute("ALTER TABLE problems ADD COLUMN data TEXT")

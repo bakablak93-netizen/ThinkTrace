@@ -63,20 +63,30 @@ def _sides(eq: Equation):
     return linear_form(eq.lhs), linear_form(eq.rhs)
 
 
-def _exact(student_sides, cand: Equation) -> bool:
-    l, r = _sides(cand)
-    return student_sides == (l, r) or student_sides == (r, l)
+def _same_solutions(s1, s2) -> bool:
+    """Linear equations given by side forms ((a,b),(c,d)) have the same solution set."""
+    (a1, b1), (c1, d1) = s1
+    (a2, b2), (c2, d2) = s2
+    u, v = (a1 - c1, b1 - d1), (a2 - c2, b2 - d2)
+    if (u == (0, 0)) != (v == (0, 0)):
+        return False
+    return u[0] * v[1] == u[1] * v[0]
 
 
 def diagnose(prev: Equation, step: Equation, history: Iterable[str] = ()) -> Diagnosis:
     student_sides = _sides(step)
     student_root = unique_root(step)
+    prev_sides = _sides(prev)
 
     exact: dict[str, Equation] = {}
     solution: dict[str, Equation] = {}
     for bug_id, bug in CATALOG.items():
         for cand in bug.transforms(prev):
-            if bug_id not in exact and _exact(student_sides, cand.buggy):
+            cand_sides = _sides(cand.buggy)
+            if _same_solutions(cand_sides, prev_sides):
+                continue  # e.g. moving every term without changing signs = swapping sides
+            l, r = cand_sides
+            if bug_id not in exact and student_sides in ((l, r), (r, l)):
                 exact[bug_id] = cand.correct
             elif (
                 bug_id not in solution

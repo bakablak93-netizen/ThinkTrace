@@ -101,3 +101,15 @@ def test_correct_version_is_provided_for_level4():
     assert eq_text(m.correct) == "2x + 6 = 14"
     m = diagnose(p("3x=12"), p("x=12")).matches[0]
     assert equivalent(m.correct, p("3x=12"))
+
+
+def test_candidates_equivalent_to_previous_step_are_ignored():
+    # moving both sides without sign change only swaps them: equivalent, not a SIGN error
+    from thinktrace.diagnose import _sides, _same_solutions
+    from thinktrace.bugs.catalog import CATALOG
+    prev = p("40=5(1+x)")
+    swapped = [c for c in CATALOG["SIGN_ON_TRANSFER"].transforms(prev) if equivalent(prev, c.buggy)]
+    assert swapped, "the catalog does produce such a candidate"
+    assert all(_same_solutions(_sides(c.buggy), _sides(prev)) for c in swapped)
+    assert not _same_solutions(_sides(p("x=1")), _sides(p("0=0")))
+    assert _same_solutions(_sides(p("0=1")), _sides(p("0=2")))

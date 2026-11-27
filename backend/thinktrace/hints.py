@@ -7,7 +7,7 @@ Levels:
   4 - detailed walkthrough: shows the correct version of the action. Unlocked only
       after at least LEVEL4_MIN_ATTEMPTS wrong attempts in the current episode.
 Levels 1-3 never contain the answer: they are fixed templates plus the student's own
-previous/current lines. (Stage 2 adds a guard for LLM-written texts on levels 1-3.)
+previous/current lines. Any LLM-written text goes through leaks_answer() (guard) first.
 
 Ambiguous diagnosis (several bug candidates) or UNKNOWN: levels 1-2 are generic
 ("check this step again"), they never name a specific error the student may not
@@ -18,7 +18,9 @@ diagnosed bug set changes within an episode.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
+from fractions import Fraction
 from typing import Literal
 
 from .bugs.catalog import CATALOG
@@ -120,3 +122,43 @@ def error_hint(diag: Diagnosis, level: int, prev: Equation, step_text: str, lang
             text = tr("hint.level4.next", lang, rule=tr("hint.general.3", lang), prev=prev_text,
                       correct=eq_text(correct))
     return Hint(level, text, "error")
+
+
+# ---------- guard: never reveal the final answer (applied to every LLM text) ----------
+
+_NUM = re.compile(r"(?<![\w.,])-?\d+(?:[.,]\d+)?(?:\s*/\s*\d+)?")
+_X_EQ = re.compile(r"[xх]\s*=\s*(-?\d+(?:[.,]\d+)?(?:\s*/\s*\d+)?)|(-?\d+(?:[.,]\d+)?(?:\s*/\s*\d+)?)\s*=\s*[xх](?![\w])",
+                   re.IGNORECASE)
+
+
+def _to_fraction(s: str) -> Fraction | None:
+    s = s.replace(" ", "").replace(",", ".")
+    try:
+        if "/" in s:
+            a, b = s.split("/")
+            return Fraction(a) / Fraction(b) if Fraction(b) != 0 else None
+        return Fraction(s)
+    except (ValueError, ZeroDivisionError):
+        return None
+
+
+def _numbers(text: str) -> set[Fraction]:
+    return {f for f in (_to_fraction(m) for m in _NUM.findall(_norm(text))) if f is not None}
+
+
+def _norm(text: str) -> str:
+    return text.replace("−", "-").replace("–", "-")
+
+
+def leaks_answer(text: str, root, context: list[str]) -> bool:
+    """True if `text` reveals the root: "x = <root>" in any form, or the root value itself
+    when that number does not occur in the problem / student's lines (`context`)."""
+    if root is None:
+        return False
+    r = Fraction(int(root.p), int(root.q)) if hasattr(root, "p") else Fraction(root)
+    t = _norm(text)
+    for a, b in _X_EQ.findall(t):
+        if _to_fraction(a or b) == r:
+            return True
+    seen = set().union(*(_numbers(c) for c in context)) if context else set()
+    return r in _numbers(t) and r not in seen

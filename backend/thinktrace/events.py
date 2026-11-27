@@ -7,7 +7,11 @@ Event types and payloads:
                      corrected: bool (correct step right after an error),
                      matches: [{bug_id, confidence, level}], pattern, unknown: bool}
   parse_error       {text, code}
-  hint_shown        {level, kind: error|stuck, bug_ids, auto: bool}
+  hint_shown        {level, kind: error|stuck, bug_ids, auto: bool,
+                     source: llm|template, fallback_reason: str|None}
+  explanation       {step_event_id, length, source: llm|template, fallback_reason}
+                    (the explanation text itself is not stored)
+  find_error_answer {step_index, bug_id, step_correct, type_correct}   (mode "find the error")
   disagree          {event_id, comment}
   session_finished  {}
 """
