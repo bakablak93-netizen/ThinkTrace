@@ -113,3 +113,34 @@ def test_candidates_equivalent_to_previous_step_are_ignored():
     assert all(_same_solutions(_sides(c.buggy), _sides(prev)) for c in swapped)
     assert not _same_solutions(_sides(p("x=1")), _sides(p("0=0")))
     assert _same_solutions(_sides(p("0=1")), _sides(p("0=2")))
+
+
+# ---------------- golden tests: DIST_SIGN and COMBINE_UNLIKE ----------------
+# (previous step, student step, expected bug id, match level, confidence)
+GOLDEN = [
+    ("-(x-3)=5", "-x-3=5", "DIST_SIGN", "exact", 0.9),
+    ("-2(x-4)=6", "-2x-8=6", "DIST_SIGN", "exact", 0.9),
+    ("5-2(x+3)=1", "5-2x+6=1", "DIST_SIGN", "exact", 0.9),
+    ("7-(x-3)=3x+2", "7-x-3=3x+2", "DIST_SIGN", "exact", 0.9),
+    ("-3(x+2)=9", "-3x+6=9", "DIST_SIGN", "exact", 0.9),
+    ("-(x+4)=2", "-x+4=2", "DIST_SIGN", "exact", 0.9),
+    ("3x+2=11", "5x=11", "COMBINE_UNLIKE", "exact", 0.9),
+    ("3x+2=11", "5=11", "COMBINE_UNLIKE", "exact", 0.9),
+    ("5x-3=2x+9", "2x=2x+9", "COMBINE_UNLIKE", "exact", 0.9),
+    ("4x+6=2x", "10x=2x", "COMBINE_UNLIKE", "exact", 0.9),
+    ("2x-7=5", "-5x=5", "COMBINE_UNLIKE", "exact", 0.9),
+    ("3x+2=11", "x=11/5", "COMBINE_UNLIKE", "solution", 0.5),   # combined and divided in one line
+]
+
+
+@pytest.mark.parametrize("prev, step, bug_id, level, conf", GOLDEN)
+def test_golden_new_bugs(prev, step, bug_id, level, conf):
+    a, b = p(prev), p(step)
+    assert not equivalent(a, b)
+    d = diagnose(a, b)
+    assert [(m.bug_id, m.level, m.confidence) for m in d.matches] == [(bug_id, level, conf)]
+
+
+def test_minus_one_bracket_is_a_sign_error_not_partial_distribution():
+    # -(x - 3) -> -x - 3 used to be ambiguous with DIST_FIRST_ONLY (k = -1)
+    assert diagnose(p("-(x-3)=5"), p("-x-3=5")).bug_ids == ["DIST_SIGN"]

@@ -89,6 +89,16 @@ def _f_div_right(rng):       # c = a x
     return f"{a * r} = {_coef(a)}x", r
 
 
+def _f_dist_neg(rng):        # -a(x ± b) = c
+    r, a, b = _nz(rng, -6, 8), rng.randint(2, 5), _nz(rng, -7, 8)
+    return f"-{a}(x {_signed(b)}) = {-a * (r + b)}", r
+
+
+def _f_minus_bracket(rng):   # c - (x ± b) = d
+    r, b, c = _nz(rng, -6, 9), _nz(rng, -7, 8), rng.randint(2, 15)
+    return f"{c} - (x {_signed(b)}) = {c - (r + b)}", r
+
+
 FORMS = {
     "dist": _f_dist,
     "dist_plus": _f_dist_plus,
@@ -98,6 +108,8 @@ FORMS = {
     "const_first": _f_const_first,
     "div": _f_div,
     "div_right": _f_div_right,
+    "dist_neg": _f_dist_neg,
+    "minus_bracket": _f_minus_bracket,
 }
 
 MAIN_FORMS = ["dist", "linear", "both"]
@@ -107,6 +119,8 @@ TRANSFER_FORMS = {
     "brackets": ["dist_plus", "dist_right", "dist"],
     "transfer": ["both", "const_first", "linear"],
     "divide": ["div", "div_right", "linear"],
+    "brackets_neg": ["dist_neg", "minus_bracket"],
+    "combine": ["linear", "both", "dist_plus"],
 }
 
 
