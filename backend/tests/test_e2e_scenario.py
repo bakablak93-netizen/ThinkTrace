@@ -74,7 +74,9 @@ def test_transfer_problem_hides_diagnosis_and_detects_repeat(client):
     from thinktrace.bugs.catalog import CATALOG
     from thinktrace.expr import eq_text
     from thinktrace.parser import parse_equation
-    cand = CATALOG["DIST_FIRST_ONLY"].transforms(parse_equation(t["text"]))[0]
+    from thinktrace.verifier import equivalent
+    eq = parse_equation(t["text"])
+    cand = next(c for c in CATALOG["DIST_FIRST_ONLY"].transforms(eq) if not equivalent(eq, c.buggy))
     r = step(client, sid, t["id"], eq_text(cand.buggy))
     assert r["status"] == "error"
     assert "diagnosis" not in r and "hint" not in r   # analysis only in the report

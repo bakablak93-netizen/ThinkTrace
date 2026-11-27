@@ -14,7 +14,7 @@ def test_generated_problems_have_integer_roots(form):
     for _ in range(100):
         prob = generate(form, rng)
         root = unique_root(parse_equation(prob.text))
-        assert root == prob.root and root.is_integer
+        assert root == prob.root and root.is_integer and root != 0
 
 
 def test_every_bug_has_transfer_family():

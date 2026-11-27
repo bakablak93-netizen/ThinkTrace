@@ -2,6 +2,8 @@
 
 Every form picks the root r first and derives the free term from it, so the root is an
 integer by construction; generate() then re-checks it with SymPy (verifier.unique_root).
+The root is never 0: with x = 0 some wrong steps keep the same solution (e.g. 9 = 3(3+x)
+-> 9 = 9 + x) and would be accepted as correct by the equivalence check.
 
 Transfer problems: for a bug id we pick a form from that bug's transfer family that
 differs from the original problem's form (other numbers AND other shape), so the student
@@ -43,27 +45,27 @@ def _coef(a: int) -> str:
 
 
 def _f_dist(rng):            # a(x ± b) = c
-    r, a, b = rng.randint(-6, 9), rng.randint(2, 6), _nz(rng, -7, 9)
+    r, a, b = _nz(rng, -6, 9), rng.randint(2, 6), _nz(rng, -7, 9)
     return f"{a}(x {_signed(b)}) = {a * (r + b)}", r
 
 
 def _f_dist_plus(rng):       # a(x ± b) ± d = c
-    r, a, b, d = rng.randint(-5, 8), rng.randint(2, 5), _nz(rng, -6, 8), _nz(rng, -9, 9)
+    r, a, b, d = _nz(rng, -5, 8), rng.randint(2, 5), _nz(rng, -6, 8), _nz(rng, -9, 9)
     return f"{a}(x {_signed(b)}) {_signed(d)} = {a * (r + b) + d}", r
 
 
 def _f_dist_right(rng):      # c = a(b ± x)  -- bracket on the right, x second
-    r, a, b = rng.randint(-5, 8), rng.randint(2, 6), _nz(rng, 1, 9)
+    r, a, b = _nz(rng, -5, 8), rng.randint(2, 6), _nz(rng, 1, 9)
     return f"{a * (b + r)} = {a}({b} + x)", r
 
 
 def _f_linear(rng):          # a x ± b = c
-    r, a, b = rng.randint(-6, 9), _nz(rng, -6, 7, (0, 1, -1)), _nz(rng, -9, 12)
+    r, a, b = _nz(rng, -6, 9), _nz(rng, -6, 7, (0, 1, -1)), _nz(rng, -9, 12)
     return f"{_coef(a)}x {_signed(b)} = {a * r + b}", r
 
 
 def _f_both(rng):            # a x ± b = c x ± d
-    r, a = rng.randint(-5, 8), rng.randint(2, 8)
+    r, a = _nz(rng, -5, 8), rng.randint(2, 8)
     c, b = _nz(rng, 1, 7, (0, a)), _nz(rng, -9, 9)
     d = (a - c) * r + b
     if d == 0:
