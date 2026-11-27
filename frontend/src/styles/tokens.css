@@ -1,0 +1,30 @@
+/* Filum design tokens (source: docs/design/filum-prototype.html). Dark-only design. */
+:root {
+  --bg: #0C1230;        /* page background (also the CSS fallback when WebGL is off) */
+  --surface: #16204A;   /* cards / panels */
+  --hint: #1F2C63;      /* hint card, chips */
+  --field: #0C1230;     /* input fields: darker than the card */
+  --fg: #F3F5FF;        /* main text */
+  --muted: #A9B4E0;     /* secondary text, labels */
+  --soft: #C5CDEE;      /* tertiary text, links */
+  --line: #3A4A8C;      /* the solution thread line */
+  --action: #FFB224;    /* primary action (amber), "solved" */
+  --ai: #5CC8FF;        /* AI: hint icon, current step marker */
+  --ai-soft: #9BDCFF;   /* AI hint label */
+  --ok: #3BE0A0;        /* correct step (mint) */
+  --err: #FF5C7A;       /* error (coral) */
+
+  --on-action: #0C1230; /* text on amber */
+  --focus: #BFE9FF;     /* focus outline */
+  --err-text: #FF93A8;  /* coral text on tinted badge background */
+  --placeholder: #8592C6;
+
+  --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* Inter right after JetBrains Mono: the mono font has no Kazakh-specific letters
+     (Ә Ғ Қ Ң Ұ Һ), Inter has them all, so they never fall back to a system font. */
+  --mono: 'JetBrains Mono', 'Inter', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --radius-card: 1.25rem;
+  --radius-ctl: 0.75rem;
+  color-scheme: dark;
+}
