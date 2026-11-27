@@ -6,6 +6,9 @@ WORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
+# VITE_FX=off builds the frontend without the WebGL background layer
+ARG VITE_FX=""
+ENV VITE_FX=$VITE_FX
 RUN npm run build
 
 # ---- 2. backend + static files ----

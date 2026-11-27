@@ -25,6 +25,9 @@ Guidance for working in this repo. Read README.md for the product description.
 - Tests: `cd backend && pytest -q` (run before claiming anything is done)
 - Frontend: `cd frontend && npm install && npm run dev`
 - Frontend type check + build: `cd frontend && npm run build`
+- Frontend tests (vitest + jsdom): `cd frontend && npm test`
+- Design: tokens in `frontend/src/styles/tokens.css`, reference `docs/design/filum-prototype.html`.
+  `VITE_FX=off` disables the WebGL background (README «Дизайн и фон»).
 - Deploy: `Dockerfile` + `render.yaml` (Render Blueprint, branch main). Secrets only as hosting env vars. See README «Деплой».
 
 ## Conventions

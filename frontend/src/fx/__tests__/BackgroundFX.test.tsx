@@ -59,6 +59,47 @@ describe("animation loop", () => {
   });
 });
 
+describe("lifecycle", () => {
+  function setup() {
+    const canvas = document.createElement("canvas");
+    vi.spyOn(canvas, "getContext").mockReturnValue(fakeGl() as unknown as RenderingContext);
+    let id = 0;
+    const raf = vi.fn(() => ++id);
+    const caf = vi.fn();
+    const e = createEngine(canvas, { reducedMotion: false, raf, caf })!;
+    return { canvas, e, raf, caf };
+  }
+
+  it("pauses while the tab is hidden and resumes when visible", () => {
+    const { e, raf, caf } = setup();
+    const hidden = vi.spyOn(document, "hidden", "get").mockReturnValue(true);
+    document.dispatchEvent(new Event("visibilitychange"));
+    expect(caf).toHaveBeenCalledTimes(1);
+    hidden.mockReturnValue(false);
+    document.dispatchEvent(new Event("visibilitychange"));
+    expect(raf).toHaveBeenCalledTimes(2);
+    e.destroy();
+  });
+
+  it("stops on webglcontextlost and restarts on webglcontextrestored", () => {
+    const { canvas, e, raf, caf } = setup();
+    const lost = new Event("webglcontextlost", { cancelable: true });
+    canvas.dispatchEvent(lost);
+    expect(lost.defaultPrevented).toBe(true);   // required to allow restoring
+    expect(caf).toHaveBeenCalledTimes(1);
+    canvas.dispatchEvent(new Event("webglcontextrestored"));
+    expect(raf).toHaveBeenCalledTimes(2);
+    e.destroy();
+  });
+
+  it("destroy removes the window listeners", () => {
+    const { e } = setup();
+    const remove = vi.spyOn(window, "removeEventListener");
+    e.destroy();
+    expect(remove.mock.calls.map((c) => c[0])).toEqual(expect.arrayContaining(["pointermove", "resize"]));
+  });
+});
+
 describe("particle count", () => {
   it("scales with area within 110..320, max 160 below 600 px", () => {
     expect(particleCount(320, 400)).toBe(110);
