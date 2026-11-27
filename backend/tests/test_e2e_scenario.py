@@ -116,3 +116,20 @@ def test_parse_preview(client):
     assert r["ok"] and r["latex"] == r"2\left(x + 3\right) = 14"
     r = client.post("/api/parse", json={"text": "2x+"}).json()
     assert not r["ok"] and r["code"] == "no_equals"
+
+
+def test_auto_hint_climbs_ladder_on_repeated_error_but_not_to_level4(client):
+    sid = client.post("/api/sessions", json={"nickname": "student_4"}).json()["session_id"]
+    pid = client.post(f"/api/sessions/{sid}/problems", json={"demo": True}).json()["id"]
+    levels = [step(client, sid, pid, "2x+3=14")["hint"]["level"] for _ in range(4)]
+    assert levels == [1, 2, 3, 3]
+    # explicit request after >= 2 wrong attempts unlocks the detailed walkthrough
+    h = client.post(f"/api/sessions/{sid}/problems/{pid}/hint").json()
+    assert h["level"] == 4 and "2x + 6 = 14" in h["text"]
+
+
+def test_stuck_hint_without_error(client):
+    sid = client.post("/api/sessions", json={"nickname": "student_5"}).json()["session_id"]
+    pid = client.post(f"/api/sessions/{sid}/problems", json={"demo": True}).json()["id"]
+    hs = [client.post(f"/api/sessions/{sid}/problems/{pid}/hint").json() for _ in range(4)]
+    assert [h["level"] for h in hs] == [1, 2, 3, 3] and all(h["kind"] == "stuck" for h in hs)

@@ -31,6 +31,7 @@ from .verifier import equivalent, is_solved
 
 MODES = ("smart_tutor",)
 CONFIDENCE = ("low", "medium", "high")
+AUTO_MAX_LEVEL = 3
 NICK_RE = re.compile(r"^[\w\-]{2,24}$")
 
 
@@ -249,15 +250,26 @@ def submit_step(conn, sid: str, pid: str, text: str, self_confidence: str, lang:
     if st.problem["kind"] == "main":
         resp["diagnosis"] = _diag_payload(d, lang)
         if sess["mode"] == "smart_tutor":
-            h = error_hint(d, 1, st.current, eq_text(step), lang)
-            log_event(conn, sid, "hint_shown", {"level": 1, "kind": "error", "bug_ids": d.bug_ids, "auto": True},
-                      problem_id=pid)
+            # automatic hint climbs the ladder for a repeated error, but never above
+            # AUTO_MAX_LEVEL: the detailed walkthrough (4) is shown only on request
+            level = min(next_level(_levels(st.episode, "error", d.bug_ids), st.wrong_attempts + 1),
+                        AUTO_MAX_LEVEL)
+            h = error_hint(d, level, st.current, eq_text(step), lang)
+            log_event(conn, sid, "hint_shown",
+                      {"level": h.level, "kind": "error", "bug_ids": d.bug_ids, "auto": True}, problem_id=pid)
             resp["hint"] = {"level": h.level, "text": h.text}
     resp["problem"] = problem_view(conn, sid, pid)
     return resp
 
 
 # ---------------- hints ----------------
+
+def _levels(episode: list[dict], kind: str, bug_ids: list[str] | None = None) -> list[int]:
+    """Hint levels already shown in the episode for this kind (and the same bug set)."""
+    return [e["payload"]["level"] for e in episode
+            if e["type"] == "hint_shown" and e["payload"]["kind"] == kind
+            and (bug_ids is None or e["payload"]["bug_ids"] == bug_ids)]
+
 
 def request_hint(conn, sid: str, pid: str, lang: str = "ru") -> dict:
     get_session(conn, sid)
@@ -269,8 +281,7 @@ def request_hint(conn, sid: str, pid: str, lang: str = "ru") -> dict:
 
     err = st.last_error
     if err is None:
-        levels = [e["payload"]["level"] for e in st.episode
-                  if e["type"] == "hint_shown" and e["payload"]["kind"] == "stuck"]
+        levels = _levels(st.episode, "stuck")
         level = next_level(levels, 0)
         h = stuck_hint(st.current, level, lang)
         bug_ids: list[str] = []
@@ -278,9 +289,7 @@ def request_hint(conn, sid: str, pid: str, lang: str = "ru") -> dict:
         step = parse_equation(err["payload"]["text"])
         d = diagnose(st.current, step)  # deterministic: same result as when the step was checked
         bug_ids = d.bug_ids
-        levels = [e["payload"]["level"] for e in st.episode
-                  if e["type"] == "hint_shown" and e["payload"]["kind"] == "error"
-                  and e["payload"]["bug_ids"] == bug_ids]
+        levels = _levels(st.episode, "error", bug_ids)
         level = next_level(levels, st.wrong_attempts)
         h = error_hint(d, level, st.current, eq_text(step), lang)
     log_event(conn, sid, "hint_shown", {"level": h.level, "kind": h.kind, "bug_ids": bug_ids, "auto": False},
