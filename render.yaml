@@ -1,0 +1,17 @@
+# Render Blueprint: one Docker web service (API + frontend), auto-deploy on push to main.
+# Secrets are NOT stored here: add them in the Render dashboard (Environment tab).
+services:
+  - type: web
+    name: thinktrace
+    runtime: docker
+    plan: free
+    branch: main
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: RATE_LIMIT_PER_SESSION
+        value: "300"
+      - key: RATE_LIMIT_PER_DAY
+        value: "5000"
