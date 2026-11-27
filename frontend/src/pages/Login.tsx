@@ -25,16 +25,16 @@ export function Login({ lang, onDone, notice }: { lang: Lang; onDone: (sid: stri
   }
 
   return (
-    <form className="card" onSubmit={submit} aria-labelledby="login-title">
-      <h2 id="login-title" ref={heading} tabIndex={-1}>{t(lang, "login.title")}</h2>
-      {notice && <p className="notice" role="status">{notice}</p>}
-      <p className="muted">{t(lang, "app.tagline")}</p>
-      <label htmlFor="nick">{t(lang, "login.nick")}</label>
-      <input id="nick" value={nick} onChange={(e) => setNick(e.target.value)} maxLength={24}
+    <form className="panel" onSubmit={submit} aria-labelledby="login-title">
+      <h2 className="label" id="login-title" ref={heading} tabIndex={-1}>{t(lang, "login.title")}</h2>
+      {notice && <p className="hint" role="status">{notice}</p>}
+      <p className="ask" style={{ marginTop: 0 }}>{t(lang, "app.tagline")}</p>
+      <label htmlFor="nick" className="sub">{t(lang, "login.nick")}</label>
+      <div className="row"><input id="nick" className="field text" value={nick} onChange={(e) => setNick(e.target.value)} maxLength={24}
         aria-describedby="nick-hint" autoComplete="off" />
+        <button className="btn" disabled={busy || nick.trim().length < 2}>{t(lang, "login.go")}</button></div>
       <p id="nick-hint" className="small muted">{t(lang, "login.nick_hint")}</p>
-      {error && <p className="error" role="alert">{error}</p>}
-      <button className="primary" disabled={busy || nick.trim().length < 2}>{t(lang, "login.go")}</button>
+      {error && <p className="msg error-text" role="alert">{error}</p>}
     </form>
   );
 }

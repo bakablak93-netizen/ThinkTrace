@@ -1,20 +1,24 @@
 import { useEffect, useRef, useState } from "react";
 import { t, type Lang } from "../i18n";
 
-/** Step status shown by icon + text, not only by colour. */
+const BADGE: Record<string, string> = { correct: "ok", solved: "solved", error: "err" };
+
+/** Step status as a text badge (never colour only). */
 export function StatusChip({ lang, status }: { lang: Lang; status: string }) {
-  const icon = status === "error" ? "✗" : "✓";
-  return (
-    <span className={`chip ${status}`}>
-      <span aria-hidden="true">{icon} </span>{t(lang, `status.${status}`)}
-    </span>
-  );
+  return <span className={`badge ${BADGE[status] ?? "ok"}`}>{t(lang, `status.${status}`)}</span>;
 }
+
+// The very first screen after page load keeps the browser's natural focus (start of the page);
+// moving focus there would only draw a focus ring around the heading on load.
+let pageJustLoaded = true;
 
 /** Heading that receives focus when a screen opens (keyboard and screen-reader users land on it). */
 export function useFocusOnMount<T extends HTMLElement>(dep?: unknown) {
   const ref = useRef<T>(null);
-  useEffect(() => { ref.current?.focus(); }, [dep]);
+  useEffect(() => {
+    if (pageJustLoaded) { pageJustLoaded = false; return; }
+    ref.current?.focus();
+  }, [dep]);
   return ref;
 }
 
@@ -39,12 +43,12 @@ export function FontSizeControl({ lang }: { lang: Lang }) {
   }, [scale]);
   const i = SCALES.indexOf(scale);
   return (
-    <div className="font-size" role="group" aria-label={t(lang, "a11y.font_size")}>
-      <button type="button" onClick={() => setScale(SCALES[i - 1])} disabled={i === 0}>
+    <div className="tools" role="group" aria-label={t(lang, "a11y.font_size")}>
+      <button type="button" className="icon" onClick={() => setScale(SCALES[i - 1])} disabled={i === 0}>
         A−<span className="sr-only"> {t(lang, "a11y.font_smaller")}</span>
       </button>
-      <span className="small" aria-live="polite">{Math.round(scale * 100)}%</span>
-      <button type="button" onClick={() => setScale(SCALES[i + 1])} disabled={i === SCALES.length - 1}>
+      <span className="small muted" aria-live="polite">{Math.round(scale * 100)}%</span>
+      <button type="button" className="icon" onClick={() => setScale(SCALES[i + 1])} disabled={i === SCALES.length - 1}>
         A+<span className="sr-only"> {t(lang, "a11y.font_larger")}</span>
       </button>
     </div>
