@@ -69,6 +69,23 @@ def test_guard_replaces_spoilers(spoiler):
     assert (r.text, r.source, r.fallback_reason) == (TEMPLATE, "template", "guard")
 
 
+NO4 = ["2(x + 3) = 14"]                 # the root 4 does not occur in the problem
+WITH4 = ["-3x + 8 = 4", "2x = 4"]          # ... and here it does
+
+
+@pytest.mark.parametrize("text, context, leak", [
+    ("Получится x = 4.", WITH4, True), ("х=4", WITH4, True), ("4 = x", WITH4, True),
+    ("x = 8/2", WITH4, True), ("x равен 4,0", NO4, True), ("Ответ: 4", NO4, True),
+    ("Посмотри на переход «-3x + 8 = 4» → «-3x = 4 + 8».", WITH4, False),   # x after a coefficient
+    ("Проверь запись x = 4 + 2.", WITH4, False),                             # number continues
+    ("Проверь 2x = 4.", WITH4, False),
+])
+def test_guard_precision(text, context, leak):
+    import sympy
+    from thinktrace.hints import leaks_answer
+    assert leaks_answer(text, sympy.Integer(4), context) is leak
+
+
 def test_guard_allows_numbers_from_the_problem():
     r = FakeProvider('{"hint": "Ты умножил 2 на 3?"}').write_hint(req())
     assert r.source == "llm"

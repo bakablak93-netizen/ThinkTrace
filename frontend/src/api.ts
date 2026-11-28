@@ -1,6 +1,7 @@
 import { t, type Lang } from "./i18n";
 
 export type Confidence = "low" | "medium" | "high";
+export type BankLevel = "A" | "B" | "C";
 export type StepStatus = "correct" | "solved" | "error";
 
 export interface StepView {
@@ -19,6 +20,8 @@ export interface ProblemView {
   solved: boolean;
   hints_enabled: boolean;
   steps: StepView[];
+  bank_id: string | null;   // problem bank id (null for generated problems)
+  level: BankLevel | null;
 }
 
 export interface Candidate {
@@ -172,8 +175,9 @@ async function call<T>(method: string, path: string, body?: unknown, extraHeader
 export const api = {
   start: (nickname: string, lang: Lang) =>
     call<{ session_id: string; token: string }>("POST", "/sessions", { nickname, lang }),
-  newProblem: (sid: string, demo: boolean) =>
-    call<ProblemView>("POST", `/sessions/${sid}/problems`, { demo }),
+  newProblem: (sid: string, demo: boolean, level?: BankLevel, after?: string | null) =>
+    call<ProblemView>("POST", `/sessions/${sid}/problems`,
+      { demo, ...(level ? { level } : {}), ...(after ? { after } : {}) }),
   transfer: (sid: string) => call<ProblemView>("POST", `/sessions/${sid}/transfer`),
   parse: (text: string, lang: Lang) => call<ParseResult>("POST", `/parse?lang=${lang}`, { text }),
   step: (sid: string, pid: string, text: string, confidence: Confidence, lang: Lang) =>

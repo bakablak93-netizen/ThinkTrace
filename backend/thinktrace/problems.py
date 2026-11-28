@@ -14,6 +14,7 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass
 
+from .bank import BANK, DEFAULT_ID, BankProblem, Level, next_problem, twin_of
 from .bugs.catalog import CATALOG
 from .parser import parse_equation
 from .verifier import unique_root
@@ -21,11 +22,33 @@ from .verifier import unique_root
 DEMO_TEXT = "2(x + 3) = 14"
 
 
+BANK_PREFIX = "bank:"
+
+
 @dataclass(frozen=True)
 class Problem:
     text: str
-    form: str
-    root: int
+    form: str            # generator form, or "bank:<id>" for a problem from the bank
+    root: int | str      # int, or "p/q" for a fractional bank problem
+
+    @property
+    def bank_id(self) -> str | None:
+        return self.form[len(BANK_PREFIX):] if self.form.startswith(BANK_PREFIX) else None
+
+
+def from_bank(bp: BankProblem) -> Problem:
+    r = bp.root
+    return Problem(bp.text, BANK_PREFIX + bp.id, int(r) if r.denominator == 1 else str(r))
+
+
+def bank_problem(level: Level, after_id: str | None = None) -> Problem:
+    """Next problem of the level from the bank (cyclic)."""
+    return from_bank(next_problem(level, after_id))
+
+
+def bank_twin(bank_id: str) -> Problem:
+    """The twin: same structure and difficulty, other numbers (final without hints)."""
+    return from_bank(twin_of(bank_id))
 
 
 def _nz(rng: random.Random, lo: int, hi: int, exclude=(0,)) -> int:
@@ -89,6 +112,16 @@ def _f_div_right(rng):       # c = a x
     return f"{a * r} = {_coef(a)}x", r
 
 
+def _f_dist_neg(rng):        # -a(x ± b) = c
+    r, a, b = _nz(rng, -6, 8), rng.randint(2, 5), _nz(rng, -7, 8)
+    return f"-{a}(x {_signed(b)}) = {-a * (r + b)}", r
+
+
+def _f_minus_bracket(rng):   # c - (x ± b) = d
+    r, b, c = _nz(rng, -6, 9), _nz(rng, -7, 8), rng.randint(2, 15)
+    return f"{c} - (x {_signed(b)}) = {c - (r + b)}", r
+
+
 FORMS = {
     "dist": _f_dist,
     "dist_plus": _f_dist_plus,
@@ -98,6 +131,8 @@ FORMS = {
     "const_first": _f_const_first,
     "div": _f_div,
     "div_right": _f_div_right,
+    "dist_neg": _f_dist_neg,
+    "minus_bracket": _f_minus_bracket,
 }
 
 MAIN_FORMS = ["dist", "linear", "both"]
@@ -107,6 +142,8 @@ TRANSFER_FORMS = {
     "brackets": ["dist_plus", "dist_right", "dist"],
     "transfer": ["both", "const_first", "linear"],
     "divide": ["div", "div_right", "linear"],
+    "brackets_neg": ["dist_neg", "minus_bracket"],
+    "combine": ["linear", "both", "dist_plus"],
 }
 
 
@@ -120,7 +157,10 @@ def generate(form: str, rng: random.Random) -> Problem:
 
 
 def demo_problem() -> Problem:
-    return Problem(DEMO_TEXT, "dist", 4)
+    """The default start problem 2(x + 3) = 14, now bank problem B1 (so it has a twin)."""
+    p = from_bank(BANK[DEFAULT_ID])
+    assert p.text == DEMO_TEXT
+    return p
 
 
 def main_problem(rng: random.Random) -> Problem:

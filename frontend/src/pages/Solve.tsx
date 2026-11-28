@@ -17,6 +17,8 @@ interface Props {
   onProblem: (p: ProblemView) => void;
   onTransfer: () => void;
   onReport: () => void;
+  /** problem bank: next problem of the same level (absent for generated problems) */
+  onNext?: () => void;
 }
 
 const CONFIDENCES: Confidence[] = ["low", "medium", "high"];
@@ -40,7 +42,7 @@ export function visibleThread(steps: StepView[]): StepView[] {
 
 const NODE: Record<string, string> = { correct: "ok", solved: "solved", error: "err" };
 
-export function Solve({ lang, sid, problem, onProblem, onTransfer, onReport }: Props) {
+export function Solve({ lang, sid, problem, onProblem, onTransfer, onReport, onNext }: Props) {
   const fx = useFx();
   const [text, setText] = useState("");
   const [preview, setPreview] = useState<ParseResult | null>(null);
@@ -200,7 +202,9 @@ export function Solve({ lang, sid, problem, onProblem, onTransfer, onReport }: P
     <div className="stack">
       <section aria-labelledby="task-label">
         <h2 className="label" id="task-label" ref={heading} tabIndex={-1}>
-          {t(lang, "solve.task_label")}{isTransfer && <span className="soft"> · {t(lang, "solve.transfer_badge")}</span>}
+          {t(lang, "solve.task_label")}
+          {problem.level && <span className="soft"> · {t(lang, "solve.level", { level: problem.level })}</span>}
+          {isTransfer && <span className="soft"> · {t(lang, "solve.transfer_badge")}</span>}
         </h2>
         <p className="task">{problem.text.replace(/-/g, "−")}</p>
       </section>
@@ -339,7 +343,8 @@ export function Solve({ lang, sid, problem, onProblem, onTransfer, onReport }: P
       </div>
 
       {problem.solved ? (
-        <SolvedBlock lang={lang} answer={last?.text ?? ""} isTransfer={isTransfer} onTransfer={onTransfer} onReport={onReport} />
+        <SolvedBlock lang={lang} answer={last?.text ?? ""} isTransfer={isTransfer} onTransfer={onTransfer}
+          onReport={onReport} onNext={isTransfer ? undefined : onNext} />
       ) : (
         <button type="button" className="link" onClick={onReport}>{t(lang, "solve.to_report")}</button>
       )}
@@ -347,8 +352,8 @@ export function Solve({ lang, sid, problem, onProblem, onTransfer, onReport }: P
   );
 }
 
-function SolvedBlock({ lang, answer, isTransfer, onTransfer, onReport }: {
-  lang: Lang; answer: string; isTransfer: boolean; onTransfer: () => void; onReport: () => void;
+function SolvedBlock({ lang, answer, isTransfer, onTransfer, onReport, onNext }: {
+  lang: Lang; answer: string; isTransfer: boolean; onTransfer: () => void; onReport: () => void; onNext?: () => void;
 }) {
   const heading = useFocusOnMount<HTMLHeadingElement>();
   return (
@@ -359,6 +364,7 @@ function SolvedBlock({ lang, answer, isTransfer, onTransfer, onReport }: {
       </div>
       <div className="row">
         {!isTransfer && <button className="btn" type="button" onClick={onTransfer}>{t(lang, "solve.to_transfer")}</button>}
+        {onNext && <button className="chip" type="button" onClick={onNext}>{t(lang, "solve.next_problem")}</button>}
         <button className={isTransfer ? "btn" : "chip"} type="button" onClick={onReport}>{t(lang, "solve.to_report")}</button>
       </div>
     </section>

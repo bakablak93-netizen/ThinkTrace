@@ -1,12 +1,16 @@
 """Catalog of typical errors (bugs) in solving linear equations.
 
 Each Bug has:
-  id, name / description (ru/kk/en), hints for levels 1-3 (ru/kk/en), transfer_tag (which problem family checks understanding of this bug), and
+  id, name / description (ru/kk/en), hints for levels 1-3 (ru/kk/en), optional hint for
+  level 4 (with {prev} and {correct} placeholders; without it level 4 is composed from the
+  level-3 rule + the correct step), transfer_tag (which problem family checks understanding
+  of this bug), and
   transforms(prev_eq) -> list[Candidate]: every way this error could be applied to the
   previous step. Each Candidate carries the buggy result AND the correct version of the
   same action (shown only on hint level 4).
 
 kk texts: added in stage 2 (missing keys fall back to ru).
+en texts of DIST_SIGN and COMBINE_UNLIKE: written by the team, need review by a native speaker.
 """
 from __future__ import annotations
 
@@ -104,7 +108,8 @@ def _dist_partial(node: Node):
         return []
     others = [f for i, f in enumerate(node.factors) if i != sums[0]]
     k = _const(others[0] if len(others) == 1 else Prod(tuple(others)))
-    if k is None or k in (0, 1):
+    # k = -1: "multiply only the first term by -1" is a sign error -> DIST_SIGN, not this bug
+    if k is None or k in (0, 1, -1):
         return []
     inner = node.factors[sums[0]].items
     correct = make_sum([scaled(k, s, n) for s, n in inner])
@@ -117,6 +122,114 @@ def _dist_partial(node: Node):
 
 def dist_first_only(eq: Equation) -> list[Candidate]:
     return _on_sides(eq, _dist_partial)
+
+
+# ---------------- DIST_SIGN ----------------
+
+def _bracket(node: Node) -> tuple[Fraction, tuple] | None:
+    """(k, inner items) if node is k·(a ± b ...) with a constant k, else None."""
+    if isinstance(node, Sum):
+        return Fraction(1), node.items
+    if isinstance(node, Prod):
+        sums = [i for i, f in enumerate(node.factors) if isinstance(f, Sum)]
+        if len(sums) != 1:
+            return None
+        others = [f for i, f in enumerate(node.factors) if i != sums[0]]
+        k = _const(others[0] if len(others) == 1 else Prod(tuple(others)))
+        return (k, node.factors[sums[0]].items) if k not in (None, 0) else None
+    return None
+
+
+def _sign_variants(k: Fraction, inner) -> list[tuple[Node, Node]]:
+    """Negative multiplier k: magnitudes are multiplied correctly by |k|, but the minus is
+    applied only to a proper subset of the terms (e.g. only the first one, or none)."""
+    correct_items = [scaled(k, s, n) for s, n in inner]
+    out = []
+    for mask in product([True, False], repeat=len(inner)):
+        if all(mask):
+            continue  # sign applied to every term = correct
+        items = [scaled(k if flip else abs(k), s, n) for flip, (s, n) in zip(mask, inner)]
+        out.append((make_sum(items), make_sum(correct_items)))
+    return out
+
+
+def _dist_sign(node: Node):
+    # -(...) or -k(...): a Neg in front of a bracket
+    if hasattr(node, "arg") and not isinstance(node, (Sum, Prod)):
+        br = _bracket(node.arg)
+        if br and br[0] > 0:
+            return _sign_variants(-br[0], br[1])
+        return []
+    # k(...) with a negative constant k, e.g. (-2)(x - 4)
+    if isinstance(node, Prod):
+        br = _bracket(node)
+        return _sign_variants(br[0], br[1]) if br and br[0] < 0 else []
+    # a - (...) or a - k(...): the bracket is an item with a minus inside a sum; expand it
+    # in place so the result is a flat sum (5 - 2(x + 3) -> 5 - 2x + 6)
+    if isinstance(node, Sum):
+        out = []
+        for i, (s, n) in enumerate(node.items):
+            br = _bracket(n) if s < 0 else None
+            if not br or br[0] <= 0:
+                continue
+            for buggy, correct in _sign_variants(-br[0], br[1]):
+                before, after = list(node.items[:i]), list(node.items[i + 1:])
+                out.append((make_sum(before + side_items(buggy) + after),
+                            make_sum(before + side_items(correct) + after)))
+        return out
+    return []
+
+
+def dist_sign(eq: Equation) -> list[Candidate]:
+    return _on_sides(eq, _dist_sign)
+
+
+# ---------------- COMBINE_UNLIKE ----------------
+
+def _simple_term(node: Node) -> tuple[Fraction, bool] | None:
+    """(value, is_x_term) for 7, x, 3x (and their Neg); None for anything else."""
+    from ..expr import Num, Var
+    neg = 1
+    if hasattr(node, "arg") and not isinstance(node, (Sum, Prod)):
+        node, neg = node.arg, -1
+    if isinstance(node, Num):
+        return neg * node.value, False
+    if isinstance(node, Var):
+        return Fraction(neg), True
+    if isinstance(node, Prod) and len(node.factors) == 2 and isinstance(node.factors[0], Num) \
+            and isinstance(node.factors[1], Var):
+        return neg * node.factors[0].value, True
+    return None
+
+
+def combine_unlike(eq: Equation) -> list[Candidate]:
+    """An x-term and a number on the same side added as if they were like terms:
+    3x + 2 -> 5x (or -> 5). Correct version of the step: the number moved across "="
+    (x-terms and numbers stay separate)."""
+    out = []
+    for side in ("lhs", "rhs"):
+        items = side_items(getattr(eq, side))
+        other = eq.rhs if side == "lhs" else eq.lhs
+        terms = [(i, _simple_term(n), s) for i, (s, n) in enumerate(items)]
+        xs = [(i, s * v) for i, t, s in terms if t and t[1] for v in [t[0]]]
+        cs = [(i, s * v) for i, t, s in terms if t and not t[1] for v in [t[0]]]
+        for (ix, a), (ic, b) in product(xs, cs):
+            rest = [it for j, it in enumerate(items) if j not in (ix, ic)]
+            total = a + b
+            # correct step: the number moves to the other side, nothing is "combined"
+            oa, ob = linear_form(other)
+            kept = make_sum(rest + [((1 if a > 0 else -1), from_linear(abs(a), 0))])
+            correct_side = from_linear(*linear_form(kept))
+            correct_other = from_linear(oa, ob - sympy.Rational(b.numerator, b.denominator))
+            for merged in (from_linear(total, 0), from_linear(0, total)):   # 5x or 5
+                if total == 0:
+                    continue
+                buggy_side = make_sum(rest + side_items(merged))
+                buggy = Equation(buggy_side, other) if side == "lhs" else Equation(other, buggy_side)
+                correct = (Equation(correct_side, correct_other) if side == "lhs"
+                           else Equation(correct_other, correct_side))
+                out.append(Candidate(buggy, correct))
+    return out
 
 
 # ---------------- SIGN_ON_TRANSFER ----------------
@@ -271,4 +384,68 @@ _register(Bug(
         },
     },
     transfer_tag="divide",
+))
+
+_register(Bug(
+    id="DIST_SIGN",
+    name={
+        "ru": "Минус перед скобкой не на всех слагаемых",
+        "en": "Minus in front of the bracket not applied to every term",
+    },
+    description={
+        "ru": "Знак отрицательного множителя применён не ко всем слагаемым в скобках: -(x - 3) → -x - 3, -2(x - 4) → -2x - 8.",
+        "en": "The sign of a negative factor was not applied to every term in the bracket: -(x - 3) → -x - 3, -2(x - 4) → -2x - 8.",
+    },
+    transforms=dist_sign,
+    hints={
+        1: {
+            "ru": "Перед скобкой стоит минус. Какие знаки должны получиться у каждого слагаемого после раскрытия?",
+            "en": "There is a minus in front of the bracket. What sign should each term get after expanding?",
+        },
+        2: {
+            "ru": "Посмотри на знаки слагаемых после раскрытия скобки с минусом.",
+            "en": "Look at the signs of the terms after expanding the bracket with a minus.",
+        },
+        3: {
+            "ru": "Правило: -(a - b) = -a + b, а -k(a - b) = -ka + kb. Минус перед скобкой меняет знак каждого слагаемого в скобках.",
+            "en": "Rule: -(a - b) = -a + b and -k(a - b) = -ka + kb. A minus in front of a bracket changes the sign of every term inside.",
+        },
+        4: {
+            "ru": "Разберём подробно. Минус перед скобкой меняет знак каждого слагаемого, а не только первого. Верный вариант этого действия: «{prev}» → «{correct}». Дальше продолжи сам.",
+            "en": "Let's go through it. A minus in front of a bracket changes the sign of every term, not only the first. The correct version of this step: “{prev}” → “{correct}”. Continue from there yourself.",
+        },
+    },
+    transfer_tag="brackets_neg",
+))
+
+_register(Bug(
+    id="COMBINE_UNLIKE",
+    name={
+        "ru": "Сложение неподобных слагаемых",
+        "en": "Unlike terms combined",
+    },
+    description={
+        "ru": "Слагаемое с x и число сложены как подобные: 3x + 2 → 5x или 5.",
+        "en": "A term with x and a number were added as like terms: 3x + 2 → 5x or 5.",
+    },
+    transforms=combine_unlike,
+    hints={
+        1: {
+            "ru": "Можно ли сложить слагаемое с x и число, у которого нет x? Чем они отличаются?",
+            "en": "Can a term with x and a number without x be added together? How are they different?",
+        },
+        2: {
+            "ru": "Посмотри, какие слагаемые ты сложил в этом шаге: у всех ли есть x?",
+            "en": "Look at which terms you added in this step: do all of them contain x?",
+        },
+        3: {
+            "ru": "Правило: складывать можно только подобные слагаемые — x с x, числа с числами. ax + b нельзя записать как (a + b)x.",
+            "en": "Rule: only like terms can be added — x with x, numbers with numbers. ax + b cannot be written as (a + b)x.",
+        },
+        4: {
+            "ru": "Разберём подробно. Слагаемое с x и число остаются разными слагаемыми; чтобы избавиться от числа, его переносят в другую часть. Верный следующий шаг: «{prev}» → «{correct}». Дальше продолжи сам.",
+            "en": "Let's go through it. A term with x and a number stay separate terms; to get rid of the number, move it to the other side. A correct next step: “{prev}” → “{correct}”. Continue from there yourself.",
+        },
+    },
+    transfer_tag="combine",
 ))
