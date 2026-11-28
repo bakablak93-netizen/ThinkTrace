@@ -23,6 +23,10 @@ const MAX_PARTICLES = 320;
 const MAX_PARTICLES_NARROW = 160;   // screens narrower than 600 css px
 const AREA_PER_PARTICLE = 5200;
 const REPEL_RADIUS = 150;
+/** Idle drift force (no cursor, no events). The prototype used 7 (~4 px/s, hard to notice);
+ *  raised so the field visibly moves while nobody touches the mouse, still calm. Measured
+ *  mean speed is pinned by src/fx/__tests__/idleDrift.test.ts. */
+export const IDLE_DRIFT = 24;
 
 export function particleCount(w: number, h: number): number {
   const max = w < 600 ? MAX_PARTICLES_NARROW : MAX_PARTICLES;
@@ -147,7 +151,7 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): Fx
     for (let q = pulses.length - 1; q >= 0; q--) { pulses[q].t += dt; if (pulses[q].t > pulses[q].life) pulses.splice(q, 1); }
     const R = REPEL_RADIUS, damp = Math.max(0, 1 - 1.6 * dt);
     for (let i = 0; i < N; i++) {
-      const x = px[i], y = py[i], a = ph[i], amp = 7 + en * 40;
+      const x = px[i], y = py[i], a = ph[i], amp = IDLE_DRIFT + en * 40;
       vx[i] += Math.sin(T * 0.31 + a) * amp * dt;
       vy[i] += (Math.cos(T * 0.27 + a * 1.3) * amp - 1.5) * dt;
       if (jit > 0.02) { vx[i] += (Math.random() - 0.5) * jit * 1400 * dt; vy[i] += (Math.random() - 0.5) * jit * 1400 * dt; }

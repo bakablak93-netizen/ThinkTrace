@@ -159,3 +159,16 @@ details summary { cursor: pointer; color: var(--soft); min-height: 2.75rem; disp
   .panel, .hint, .done, .stat { border: 1px solid CanvasText; }
   .node { forced-color-adjust: none; }
 }
+
+/* ---------- login: card + static example (right on desktop, below on phones) ---------- */
+.login-layout { display: grid; grid-template-columns: 1fr; gap: 1.25rem; align-items: start; }
+@media (min-width: 900px) { .login-layout { grid-template-columns: 1fr 1fr; } }
+.demo-task { font-size: clamp(1.75rem, 4vw, 2.25rem); margin: 0.25rem 0 1.25rem; }
+.demo-thread { list-style: none; margin: 0 0 0 0.75rem; padding: 0 0 0 1.75rem; border-left: 2px solid var(--line);
+  display: flex; flex-direction: column; gap: 1.125rem; }
+.demo-thread li { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0; }
+.demo-marker { position: absolute; left: -2.6rem; top: 0.125rem; width: 1.6rem; height: 1.6rem; }
+.demo-thread .expr { font-size: 1.25rem; }
+.demo-hint { font-size: 0.9375rem; line-height: 1.45; color: var(--fg); background: rgba(31, 44, 99, .92);
+  border-radius: 0.75rem; padding: 0.625rem 0.75rem; }
+.demo-hint b { color: var(--ai-soft); font-weight: 700; }
