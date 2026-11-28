@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api, ApiError } from "../api";
 import { useFocusOnMount } from "../components/a11y";
+import { LoginDemo } from "../components/LoginDemo";
 import { t, type Lang } from "../i18n";
 
 export function Login({ lang, onDone, notice }: { lang: Lang; onDone: (sid: string, token: string) => void; notice?: string }) {
@@ -25,6 +26,7 @@ export function Login({ lang, onDone, notice }: { lang: Lang; onDone: (sid: stri
   }
 
   return (
+    <div className="login-layout">
     <form className="panel" onSubmit={submit} aria-labelledby="login-title">
       <h2 className="label" id="login-title" ref={heading} tabIndex={-1}>{t(lang, "login.title")}</h2>
       {notice && <p className="hint" role="status">{notice}</p>}
@@ -36,5 +38,7 @@ export function Login({ lang, onDone, notice }: { lang: Lang; onDone: (sid: stri
       <p id="nick-hint" className="small muted">{t(lang, "login.nick_hint")}</p>
       {error && <p className="msg error-text" role="alert">{error}</p>}
     </form>
+    <LoginDemo lang={lang} />
+    </div>
   );
 }
