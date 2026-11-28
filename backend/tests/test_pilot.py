@@ -314,3 +314,50 @@ def test_practice_never_reaches_post_test_problems(env):
             seen.add(p["bank_id"])
             after = p["bank_id"]
         assert not seen & set(PRE_IDS) and not seen & set(POST_IDS)
+
+
+def test_solved_without_hints_means_correct_final_answer(env):
+    """solved_without_hints = the final answer is correct (SymPy) and no hints were used;
+    finishing a problem with a wrong answer is NOT solved. B4 has the solution x = 4."""
+    from thinktrace.pilot import export_rows
+    c, path = env
+    assert BANK["B4"].root == 4
+
+    def pre_rows(lines_b4):
+        sid = start(c).json()["session_id"]
+        a3 = nxt(c, sid)["problem"]
+        c.post(f"/api/sessions/{sid}/problems/{a3['id']}/finish")
+        b4 = nxt(c, sid)["problem"]
+        assert b4["bank_id"] == "B4"
+        r = None
+        for line in lines_b4:
+            r = step(c, sid, b4["id"], line)
+        assert r["finished"] is True                       # the problem is finished in both cases
+        return sid
+
+    wrong = pre_rows(["x = 3"])                              # finished, wrong answer
+    right = pre_rows(["5x + 5 - 7 = 18", "x = 4"])           # finished, correct answer
+    _, rows = parse_csv(get(c, "/api/pilot/class7b/export.csv").text)
+    from thinktrace.pilot import anon_id
+    b4 = {r["anon_session"]: r["solved_without_hints"] for r in rows if r["problem_id"] == "B4"}
+    assert b4[anon_id(wrong)] == "false"
+    assert b4[anon_id(right)] == "true"
+
+    # practice: correct answer but with a hint -> false
+    sid = run_to_practice(c)
+    pid = c.post(f"/api/sessions/{sid}/problems", json={"demo": True}).json()["id"]
+    c.post(f"/api/sessions/{sid}/problems/{pid}/hint")
+    for line in ("2x + 6 = 14", "2x = 8", "x = 4"):
+        step(c, sid, pid, line)
+    with sqlite3.connect(path) as db:
+        db.row_factory = sqlite3.Row
+        practice = [r for r in export_rows(db, "class7b") if r["anon_session"] == anon_id(sid) and r["phase"] == "practice"]
+    assert practice[0]["hints_used"] == 1 and practice[0]["solved_without_hints"] is False
+
+
+def test_summary_uses_correct_answers_not_finished_problems(env):
+    c, _ = env
+    for _ in range(5):
+        full_session(c, solve_post=False)        # post problems only submitted, never answered
+    s = get(c, "/api/pilot/class7b/summary").json()
+    assert s["N"] == 5 and s["solved_without_hints_post"] == 0.0

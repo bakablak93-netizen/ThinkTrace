@@ -315,7 +315,7 @@ curl -H "X-Export-Token: <токен>" https://<адрес>/api/pilot/<КОД>/s
 | `cohort`, `phase`, `problem_id` | когорта, этап, id задачи банка (`generated` / `find_error` для прочих) |
 | `steps`, `errors`, `hints_used` | число шагов, неверных шагов, показанных подсказок |
 | `error_types` | коды ошибок через `;` (`UNKNOWN` — вне каталога) |
-| `solved_without_hints` | решена и подсказок не было (`true`/`false`) |
+| `solved_without_hints` | финальный ответ верный (проверка SymPy) **и** подсказок не было; завершённая задача с неверным ответом — `false` |
 | `time_sec` | длительность задачи в секундах (без отметок времени) |
 | `confidence_vs_correct` | для каждой выбранной уверенности: верных шагов / всего, напр. `high:2/3;low:0/1` |
 

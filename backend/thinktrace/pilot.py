@@ -223,7 +223,13 @@ def _problem_row(conn, sess, prob) -> dict:
 
 def export_rows(conn, cohort: str) -> list[dict]:
     """One row per problem of every consented session of the cohort (deleted sessions are
-    gone from the database). No nickname, session id, timestamps or free text."""
+    gone from the database). No nickname, session id, timestamps or free text.
+
+    solved_without_hints = the final answer is correct AND no hint was shown. "Correct"
+    means solved_at is set, which happens only when the last line is x = number and SymPy
+    confirms it is equivalent to the problem (exam and practice), or, in "find the error",
+    when both the step and the error type are right. A finished problem with a wrong answer
+    (or "Submit" without an answer) is not solved."""
     rows = []
     for sess in conn.execute("SELECT * FROM sessions WHERE cohort = ? AND consent_at IS NOT NULL ORDER BY created_at",
                              (cohort,)):
