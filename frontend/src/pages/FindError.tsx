@@ -13,9 +13,10 @@ interface Props {
   onTask: (t: FindErrorTask) => void;
   onNext: () => void;
   onReport: () => void;
+  reportLabel?: string;
 }
 
-export function FindError({ lang, sid, task, onTask, onNext, onReport }: Props) {
+export function FindError({ lang, sid, task, onTask, onNext, onReport, reportLabel }: Props) {
   const [step, setStep] = useState<number | null>(null);
   const [bug, setBug] = useState<string | null>(null);
   const [feedback, setFeedback] = useState("");
@@ -132,11 +133,11 @@ export function FindError({ lang, sid, task, onTask, onNext, onReport }: Props) 
           <p className="label" style={{ color: "var(--action)" }}>{t(lang, "done.label")}</p>
           <div className="row">
             <button className="btn" onClick={onNext}>{t(lang, "finderr.next")}</button>
-            <button className="chip" onClick={onReport}>{t(lang, "solve.to_report")}</button>
+            <button className="chip" onClick={onReport}>{reportLabel ?? t(lang, "solve.to_report")}</button>
           </div>
         </section>
       )}
-      {!task.solved && <button type="button" className="link" onClick={onReport}>{t(lang, "solve.to_report")}</button>}
+      {!task.solved && <button type="button" className="link" onClick={onReport}>{reportLabel ?? t(lang, "solve.to_report")}</button>}
     </div>
   );
 }

@@ -8,12 +8,12 @@ export interface StepView {
   event_id: number;
   text: string;
   latex: string;
-  status: StepStatus;
+  status: StepStatus | "recorded";   // "recorded": pilot exam line, correctness not shown
 }
 
 export interface ProblemView {
   id: string;
-  kind: "main" | "transfer";
+  kind: "main" | "transfer" | "exam";
   text: string;
   latex: string;
   current: string;
@@ -22,6 +22,8 @@ export interface ProblemView {
   steps: StepView[];
   bank_id: string | null;   // problem bank id (null for generated problems)
   level: BankLevel | null;
+  phase?: PilotPhase | null;   // pilot: pre | practice | post
+  finished?: boolean;          // pilot exam problems
 }
 
 export interface Candidate {
@@ -46,8 +48,24 @@ export interface HintView {
   source: HintSource;
 }
 
+export type PilotPhase = "pre" | "practice" | "post" | "done";
+
+export interface StartResult {
+  session_id: string;
+  token: string;
+  pilot?: { cohort: string; phase: PilotPhase };
+}
+
+export interface PilotNext {
+  phase: PilotPhase;
+  problem: ProblemView | null;
+  index?: number;
+  total?: number;
+}
+
 export interface StepResult {
-  status: StepStatus | "parse_error";
+  status: StepStatus | "parse_error" | "recorded";   // "recorded": pilot exam, no feedback
+  finished?: boolean;
   event_id?: number;
   message?: string;
   diagnosis?: Diagnosis;
@@ -103,7 +121,8 @@ export interface ReportStep {
 
 export interface ReportProblem {
   id: string;
-  kind: "main" | "transfer" | "find_error";
+  kind: "main" | "transfer" | "find_error" | "exam";
+  phase?: PilotPhase | null;
   text: string;
   solved: boolean;
   duration_sec: number;
@@ -174,7 +193,11 @@ async function call<T>(method: string, path: string, body?: unknown, extraHeader
 
 export const api = {
   start: (nickname: string, lang: Lang) =>
-    call<{ session_id: string; token: string }>("POST", "/sessions", { nickname, lang }),
+    call<StartResult>("POST", "/sessions", { nickname, lang }),
+  startPilot: (cohort: string, lang: Lang) =>
+    call<StartResult>("POST", "/sessions", { pilot: cohort, consent: true, lang }),
+  pilotNext: (sid: string, post = false) => call<PilotNext>("POST", `/sessions/${sid}/pilot/next`, { post }),
+  finishExam: (sid: string, pid: string) => call<{ finished: boolean }>("POST", `/sessions/${sid}/problems/${pid}/finish`),
   newProblem: (sid: string, demo: boolean, level?: BankLevel, after?: string | null) =>
     call<ProblemView>("POST", `/sessions/${sid}/problems`,
       { demo, ...(level ? { level } : {}), ...(after ? { after } : {}) }),

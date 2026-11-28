@@ -19,6 +19,8 @@ interface Props {
   onReport: () => void;
   /** problem bank: next problem of the same level (absent for generated problems) */
   onNext?: () => void;
+  /** pilot practice: the "report" button leads back to the problem choice */
+  reportLabel?: string;
 }
 
 const CONFIDENCES: Confidence[] = ["low", "medium", "high"];
@@ -42,7 +44,7 @@ export function visibleThread(steps: StepView[]): StepView[] {
 
 const NODE: Record<string, string> = { correct: "ok", solved: "solved", error: "err" };
 
-export function Solve({ lang, sid, problem, onProblem, onTransfer, onReport, onNext }: Props) {
+export function Solve({ lang, sid, problem, onProblem, onTransfer, onReport, onNext, reportLabel }: Props) {
   const fx = useFx();
   const [text, setText] = useState("");
   const [preview, setPreview] = useState<ParseResult | null>(null);
@@ -344,16 +346,17 @@ export function Solve({ lang, sid, problem, onProblem, onTransfer, onReport, onN
 
       {problem.solved ? (
         <SolvedBlock lang={lang} answer={last?.text ?? ""} isTransfer={isTransfer} onTransfer={onTransfer}
-          onReport={onReport} onNext={isTransfer ? undefined : onNext} />
+          onReport={onReport} onNext={isTransfer ? undefined : onNext} reportLabel={reportLabel} />
       ) : (
-        <button type="button" className="link" onClick={onReport}>{t(lang, "solve.to_report")}</button>
+        <button type="button" className="link" onClick={onReport}>{reportLabel ?? t(lang, "solve.to_report")}</button>
       )}
     </div>
   );
 }
 
-function SolvedBlock({ lang, answer, isTransfer, onTransfer, onReport, onNext }: {
+function SolvedBlock({ lang, answer, isTransfer, onTransfer, onReport, onNext, reportLabel }: {
   lang: Lang; answer: string; isTransfer: boolean; onTransfer: () => void; onReport: () => void; onNext?: () => void;
+  reportLabel?: string;
 }) {
   const heading = useFocusOnMount<HTMLHeadingElement>();
   return (
@@ -365,7 +368,7 @@ function SolvedBlock({ lang, answer, isTransfer, onTransfer, onReport, onNext }:
       <div className="row">
         {!isTransfer && <button className="btn" type="button" onClick={onTransfer}>{t(lang, "solve.to_transfer")}</button>}
         {onNext && <button className="chip" type="button" onClick={onNext}>{t(lang, "solve.next_problem")}</button>}
-        <button className={isTransfer ? "btn" : "chip"} type="button" onClick={onReport}>{t(lang, "solve.to_report")}</button>
+        <button className={isTransfer ? "btn" : "chip"} type="button" onClick={onReport}>{reportLabel ?? t(lang, "solve.to_report")}</button>
       </div>
     </section>
   );

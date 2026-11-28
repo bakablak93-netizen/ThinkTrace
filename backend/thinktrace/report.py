@@ -47,6 +47,7 @@ def build_report(conn: sqlite3.Connection, sid: str, lang: str = "ru") -> dict:
             "duration_sec": round((r["solved_at"] or (events[-1]["ts"] if events else r["created_at"]))
                                   - r["created_at"], 1),
             "steps": [], "hints": [], "errors_by_bug": {}, "answers": [],
+            "phase": r["phase"],   # pilot: pre | practice | post (None outside the pilot)
         }
         for r in conn.execute("SELECT * FROM problems WHERE session_id = ? ORDER BY created_at", (sid,))
     }

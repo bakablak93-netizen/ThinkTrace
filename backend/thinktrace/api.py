@@ -16,6 +16,10 @@ Stage 1 endpoints (all under /api):
   GET  /sessions/{sid}/report                     report
   POST /parse                                     live preview {text} -> latex / error
   DELETE /sessions/{sid}                          delete my data (header X-Session-Token)
+  POST /sessions/{sid}/pilot/next                 pilot: next pre/post problem or the phase
+  POST /sessions/{sid}/problems/{pid}/finish      pilot exam: "submit" without feedback
+  GET  /pilot/{cohort}/export.csv                 pilot export (X-Export-Token)
+  GET  /pilot/{cohort}/summary                    pilot summary (X-Export-Token)
   GET  /health                                    liveness check (outside /api)
 Stage 2: modes independent / exam, teacher view.
 
@@ -28,6 +32,7 @@ Run: uvicorn thinktrace.api:create_app --factory --port 8000
 """
 from __future__ import annotations
 
+import hmac
 import os
 import sqlite3
 from pathlib import Path
@@ -36,11 +41,11 @@ from typing import Iterator, Literal
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import db, tutor
+from . import db, pilot, tutor
 from .expr import eq_latex, eq_text
 from .i18n import tr
 from .parser import ParseError, parse_equation
@@ -52,9 +57,15 @@ Lang = Literal["ru", "kk", "en"]
 
 
 class StartIn(BaseModel):
-    nickname: str = Field(min_length=2, max_length=24)
+    nickname: str | None = Field(default=None, min_length=2, max_length=24)   # not asked in the pilot
     lang: Lang = "ru"
     mode: Literal["smart_tutor"] = "smart_tutor"
+    pilot: str | None = Field(default=None, max_length=64)   # cohort code from /?pilot=CODE
+    consent: bool = False                                    # pilot: explicit consent checkbox
+
+
+class PilotNextIn(BaseModel):
+    post: bool = False    # practice -> start the post-test
 
 
 class ProblemIn(BaseModel):
@@ -138,7 +149,7 @@ def create_app(db_path: str | None = None, static_dir: str | None = None,
 
     @app.post("/api/sessions")
     def start(body: StartIn, conn=Depends(get_conn)):
-        return tutor.create_session(conn, body.nickname, body.lang, body.mode)
+        return tutor.create_session(conn, body.nickname, body.lang, body.mode, body.pilot, body.consent)
 
     @app.post("/api/sessions/{sid}/problems")
     def new_problem(sid: str, body: ProblemIn, conn=Depends(get_conn)):
@@ -195,6 +206,35 @@ def create_app(db_path: str | None = None, static_dir: str | None = None,
     def delete_my_data(sid: str, x_session_token: str | None = Header(default=None), conn=Depends(get_conn)):
         tutor.delete_session_data(conn, sid, x_session_token)
         return {"ok": True}
+
+    @app.post("/api/sessions/{sid}/pilot/next")
+    def pilot_next(sid: str, body: PilotNextIn, conn=Depends(get_conn)):
+        return tutor.pilot_next(conn, sid, go_post=body.post)
+
+    @app.post("/api/sessions/{sid}/problems/{pid}/finish")
+    def pilot_finish(sid: str, pid: str, conn=Depends(get_conn)):
+        return tutor.pilot_finish_exam(conn, sid, pid)
+
+    def export_access(cohort: str, token: str | None) -> None:
+        """404 when PILOT_EXPORT_TOKEN is not set (the feature is off), 401 without the
+        right token (constant-time comparison)."""
+        expected = os.getenv("PILOT_EXPORT_TOKEN", "")
+        if not expected or not pilot.valid_cohort(cohort):
+            raise tutor.TutorError("not_found", 404)
+        if not token or not hmac.compare_digest(token.encode(), expected.encode()):
+            raise tutor.TutorError("unauthorized", 401)
+
+    @app.get("/api/pilot/{cohort}/export.csv")
+    def pilot_export(cohort: str, x_export_token: str | None = Header(default=None), conn=Depends(get_conn)):
+        export_access(cohort, x_export_token)
+        return Response(pilot.export_csv(conn, cohort), media_type="text/csv; charset=utf-8",
+                        headers={"Content-Disposition": f'attachment; filename="pilot-{cohort}.csv"',
+                                 "Cache-Control": "no-store"})
+
+    @app.get("/api/pilot/{cohort}/summary")
+    def pilot_summary(cohort: str, x_export_token: str | None = Header(default=None), conn=Depends(get_conn)):
+        export_access(cohort, x_export_token)
+        return pilot.summary(conn, cohort)
 
     @app.get("/api/sessions/{sid}/report")
     def report(sid: str, lang: Lang = "ru", conn=Depends(get_conn)):

@@ -14,6 +14,9 @@ Event types and payloads:
   find_error_answer {step_index, bug_id, step_correct, type_correct}   (mode "find the error")
   disagree          {event_id, comment}
   session_finished  {}
+  phase_started     {phase}                               (pilot)
+  problem_finished  {solved: bool}                        (pilot exam problems)
+Pilot: every event of a problem with a phase also gets payload.phase (pre|practice|post).
 """
 from __future__ import annotations
 
@@ -24,6 +27,10 @@ import time
 
 def log_event(conn: sqlite3.Connection, session_id: str, type_: str, payload: dict,
               problem_id: str | None = None, ts: float | None = None) -> int:
+    if problem_id is not None and "phase" not in payload:
+        row = conn.execute("SELECT phase FROM problems WHERE id = ?", (problem_id,)).fetchone()
+        if row and row["phase"]:
+            payload = {**payload, "phase": row["phase"]}
     cur = conn.execute(
         "INSERT INTO events (session_id, problem_id, ts, type, payload) VALUES (?, ?, ?, ?, ?)",
         (session_id, problem_id, ts if ts is not None else time.time(), type_,

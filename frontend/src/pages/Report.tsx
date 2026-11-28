@@ -87,6 +87,8 @@ export function Report({ lang, sid, onRestart, onDelete }: {
   const main = data.problems.filter((p) => p.kind === "main");
   const final = data.problems.filter((p) => p.kind === "transfer").slice(-1)[0];
   const findErr = data.problems.filter((p) => p.kind === "find_error");
+  // pilot: the student's own pre/post test lines (individual results only, no comparison)
+  const exams = data.problems.filter((p) => p.kind === "exam");
   const mainSteps = main.flatMap((p) => p.steps);
   const errors = mainSteps.filter((s) => s.status === "error");
   const ix = data.independence;
@@ -112,7 +114,7 @@ export function Report({ lang, sid, onRestart, onDelete }: {
       {ix && <IndexDetails lang={lang} ix={ix} />}
 
       {main.map((p) => (
-        <section key={p.id} className="panel" aria-label={t(lang, "report.thread")}>
+        <section key={p.id} className="panel" aria-label={`${t(lang, "report.thread")}: ${pretty(p.text)}`}>
           <h3 className="label">{t(lang, "report.thread")}</h3>
           <p className="task" style={{ fontSize: "clamp(1.75rem, 6vw, 2.5rem)", marginBottom: "1.25rem" }}>{pretty(p.text)}</p>
           <Thread lang={lang} steps={p.steps} />
@@ -151,6 +153,14 @@ export function Report({ lang, sid, onRestart, onDelete }: {
       )}
 
       {findErr.map((p) => <FindErrorBlock key={p.id} lang={lang} p={p} />)}
+
+      {exams.map((p) => (
+        <section key={p.id} className="panel" aria-label={`${t(lang, p.phase === "post" ? "exam.post" : "exam.pre")}: ${pretty(p.text)}`}>
+          <h3 className="label">{t(lang, p.phase === "post" ? "exam.post" : "exam.pre")}</h3>
+          <p className="expr mono" style={{ marginBottom: "1rem" }}>{pretty(p.text)}</p>
+          <Thread lang={lang} steps={p.steps} />
+        </section>
+      ))}
 
       <details className="panel">
         <summary>{t(lang, "report.timeline")}</summary>

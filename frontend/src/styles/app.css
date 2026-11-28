@@ -159,3 +159,6 @@ details summary { cursor: pointer; color: var(--soft); min-height: 2.75rem; disp
   .panel, .hint, .done, .stat { border: 1px solid CanvasText; }
   .node { forced-color-adjust: none; }
 }
+/* pilot exam: a recorded line has a neutral marker and a text badge (no right/wrong) */
+.node.rec { background: var(--line); }
+.badge.rec { background: rgba(197, 205, 238, .14); color: var(--soft); }
